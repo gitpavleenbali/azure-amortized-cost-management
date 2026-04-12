@@ -5,7 +5,7 @@
 
 param location string
 param environment string
-param storageAccountName string = 'safinops${uniqueString(resourceGroup().id)}'
+param storageAccountName string = 'sa${environment}${uniqueString(resourceGroup().id, subscription().subscriptionId)}'
 param tags object = {}
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
