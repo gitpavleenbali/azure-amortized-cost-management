@@ -67,6 +67,10 @@ param functionAppKey string = ''
 @description('Budget start date (first of current month). Once a budget is created, the start date cannot be changed — delete and recreate instead.')
 param budgetStartDate string = '2026-04-01T00:00:00Z'
 
+@description('Cost tracking scope: resourceGroup (per-RG only), subscription (sub-level only), or both (RG + subscription rollup)')
+@allowed(['resourceGroup', 'subscription', 'both'])
+param costTrackingScope string = 'both'
+
 // ── Naming Overrides ─────────────────────────────────────────
 @description('Custom name for the Action Group (leave blank for default: ag-finops-budget-alerts)')
 param actionGroupNameOverride string = ''
@@ -299,6 +303,7 @@ module functionApp 'modules/function-app.bicep' = if (enableAmortizedPipeline) {
     lawSharedKey: logAnalytics.outputs.primarySharedKey
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
     subscriptionBudgetAmount: subscriptionBudgetAmount
+    costTrackingScope: costTrackingScope
     teamsWebhookUri: teamsWebhookUri
     finopsEmail: finopsEmail
     tags: tags

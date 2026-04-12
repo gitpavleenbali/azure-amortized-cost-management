@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "8461029523127949200"
+      "templateHash": "4790611442448777979"
     }
   },
   "parameters": {
@@ -118,6 +118,18 @@
       "defaultValue": "2026-04-01T00:00:00Z",
       "metadata": {
         "description": "Budget start date (first of current month). Once a budget is created, the start date cannot be changed — delete and recreate instead."
+      }
+    },
+    "costTrackingScope": {
+      "type": "string",
+      "defaultValue": "both",
+      "allowedValues": [
+        "resourceGroup",
+        "subscription",
+        "both"
+      ],
+      "metadata": {
+        "description": "Cost tracking scope: resourceGroup (per-RG only), subscription (sub-level only), or both (RG + subscription rollup)"
       }
     },
     "actionGroupNameOverride": {
@@ -2393,6 +2405,9 @@
           "subscriptionBudgetAmount": {
             "value": "[parameters('subscriptionBudgetAmount')]"
           },
+          "costTrackingScope": {
+            "value": "[parameters('costTrackingScope')]"
+          },
           "teamsWebhookUri": {
             "value": "[parameters('teamsWebhookUri')]"
           },
@@ -2413,7 +2428,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "11327418531981678463"
+              "templateHash": "5877636492291254219"
             }
           },
           "parameters": {
@@ -2469,6 +2484,13 @@
               "defaultValue": 10000,
               "metadata": {
                 "description": "Subscription budget amount (for subscription-level rollup)"
+              }
+            },
+            "costTrackingScope": {
+              "type": "string",
+              "defaultValue": "both",
+              "metadata": {
+                "description": "Cost tracking scope: resourceGroup, subscription, or both"
               }
             },
             "lawCustomerId": {
@@ -2611,6 +2633,10 @@
                     {
                       "name": "AZURE_SUBSCRIPTION_ID",
                       "value": "[subscription().subscriptionId]"
+                    },
+                    {
+                      "name": "COST_TRACKING_SCOPE",
+                      "value": "[parameters('costTrackingScope')]"
                     },
                     {
                       "name": "WEBSITE_RUN_FROM_PACKAGE",

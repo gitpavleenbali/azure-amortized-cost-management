@@ -43,6 +43,12 @@ GOVERNANCE_EMAIL = os.environ.get("GOVERNANCE_EMAIL", "")
 LAW_WORKSPACE_ID = os.environ.get("LAW_WORKSPACE_ID", "")
 LAW_SHARED_KEY   = os.environ.get("LAW_SHARED_KEY", "")
 
+# Cost tracking scope — controls what level of data is evaluated and stored:
+#   "resourceGroup" = per-RG tracking only (no subscription rollup)
+#   "subscription"  = subscription-level only (no per-RG details)
+#   "both"          = both per-RG + subscription rollup (default)
+COST_TRACKING_SCOPE = os.environ.get("COST_TRACKING_SCOPE", "both").lower()
+
 # Excluded RG prefixes — configurable via app setting. Empty = include ALL RGs.
 # Set EXCLUDED_RG_PREFIXES="MC_,FL_,MA_,NetworkWatcherRG" to filter system RGs.
 EXCLUDED_RG_PREFIXES = [p.strip() for p in os.environ.get("EXCLUDED_RG_PREFIXES", "").split(",") if p.strip()]
@@ -190,7 +196,12 @@ def _run_evaluation() -> dict:
     alerts = []
     updated = 0
 
+    # ── Per-RG evaluation (skip if scope is 'subscription' only) ──
+    run_rg_eval = COST_TRACKING_SCOPE in ("resourcegroup", "both")
+
     for rg, entry in inventory.items():
+        if not run_rg_eval:
+            break
         technical = entry.get("technical", 0)
         finance = entry.get("finance", 0)
         budget = technical if technical > 0 else finance
@@ -297,9 +308,10 @@ def _run_evaluation() -> dict:
     if alerts:
         _dispatch(alerts, now)
 
-    # ── Subscription-level rollup ─────────────────────────────
+    # ── Subscription-level rollup (runs when scope is 'subscription' or 'both') ─
     # Aggregate all RG costs into a subscription-level summary document
     # so dashboards can show subscription-wide spend vs subscription budget
+    run_sub_rollup = COST_TRACKING_SCOPE in ("subscription", "both")
     sub_id = os.environ.get("AZURE_SUBSCRIPTION_ID", "")
     if not sub_id:
         # Try to get from inventory
@@ -308,7 +320,7 @@ def _run_evaluation() -> dict:
                 sub_id = entry["sub"]
                 break
 
-    if sub_id:
+    if sub_id and run_sub_rollup:
         total_mtd = sum(rg_costs.values())
         total_budget = sum(
             (e.get("technical", 0) if e.get("technical", 0) > 0 else e.get("finance", 0))

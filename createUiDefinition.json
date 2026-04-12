@@ -64,6 +64,22 @@
             }
           },
           {
+            "name": "costTrackingScope",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Cost Tracking Scope",
+            "defaultValue": "Both (RG + Subscription)",
+            "toolTip": "Choose what level of cost tracking to enable. 'Resource Group' tracks per-RG budgets and spend. 'Subscription' tracks total subscription spend. 'Both' gives you per-RG details plus a subscription-level rollup.",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                { "label": "Resource Group only", "description": "Track amortized cost per resource group against individual RG budgets.", "value": "resourceGroup" },
+                { "label": "Subscription only", "description": "Track total subscription spend against the subscription-level budget.", "value": "subscription" },
+                { "label": "Both (RG + Subscription)", "description": "Full tracking: per-RG details plus subscription-level rollup summary.", "value": "both" }
+              ]
+            },
+            "visible": true
+          },
+          {
             "name": "subscriptionBudgetAmount",
             "type": "Microsoft.Common.Slider",
             "min": 500,
@@ -413,6 +429,7 @@
       "finopsEmail": "[basics('finopsEmail')]",
       "subscriptionBudgetAmount": "[steps('budgetConfig').subscriptionBudgetAmount]",
       "defaultBudgetAmount": "[steps('budgetConfig').defaultBudgetAmount]",
+      "costTrackingScope": "[steps('budgetConfig').costTrackingScope]",
       "enableAutoBudget": "[steps('features').enableAutoBudget]",
       "enableSelfServiceChange": "[steps('features').enableSelfServiceChange]",
       "enablePolicy": "[steps('features').enablePolicy]",
