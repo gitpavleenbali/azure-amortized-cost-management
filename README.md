@@ -1,3 +1,20 @@
+---
+description: Enterprise-grade amortized cost budget management and alerting for Azure at scale.
+page_type: sample
+products:
+- azure
+- azure-resource-manager
+- azure-cost-management
+- azure-functions
+- azure-logic-apps
+- azure-cosmos-db
+urlFragment: azure-amortized-cost-management
+languages:
+- bicep
+- json
+- python
+---
+
 # Azure Amortized Cost Management
 
 [![CI — Validate & Test](https://github.com/gitpavleenbali/azure-amortized-cost-management/actions/workflows/ci.yml/badge.svg)](https://github.com/gitpavleenbali/azure-amortized-cost-management/actions/workflows/ci.yml)
@@ -19,6 +36,7 @@ Choose how you want to get started:
 Click the button below to launch a guided deployment wizard in the Azure Portal — no cloning or local tooling required.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fgitpavleenbali%2Fazure-amortized-cost-management%2Fmain%2Fazuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2Fgitpavleenbali%2Fazure-amortized-cost-management%2Fmain%2FcreateUiDefinition.json)
+[![Deploy To Azure US Gov](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/deploytoazuregov.svg?sanitize=true)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fgitpavleenbali%2Fazure-amortized-cost-management%2Fmain%2Fazuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2Fgitpavleenbali%2Fazure-amortized-cost-management%2Fmain%2FcreateUiDefinition.json)
 [![Visualize](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/visualizebutton.svg?sanitize=true)](http://armviz.io/#/?load=https%3A%2F%2Fraw.githubusercontent.com%2Fgitpavleenbali%2Fazure-amortized-cost-management%2Fmain%2Fazuredeploy.json)
 
 ### Option 2: Use this template on GitHub
