@@ -8,8 +8,22 @@
 > Enterprise-grade budget management and **amortized cost** alerting for Azure at scale.
 > Bridges Azure's actual-cost-only budget limitation with amortized cost tracking for Reserved Instances and Savings Plans.
 
+---
+
+## Getting Started
+
+Choose how you want to get started:
+
+### Option 1: Deploy directly to Azure
+
+Click the button below to launch a guided deployment wizard in the Azure Portal — no cloning or local tooling required.
+
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fgitpavleenbali%2Fazure-amortized-cost-management%2Fmain%2Fazuredeploy.json/createUIDefinitionUri/https%3A%2F%2Fraw.githubusercontent.com%2Fgitpavleenbali%2Fazure-amortized-cost-management%2Fmain%2FcreateUiDefinition.json)
 [![Visualize](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/visualizebutton.svg?sanitize=true)](http://armviz.io/#/?load=https%3A%2F%2Fraw.githubusercontent.com%2Fgitpavleenbali%2Fazure-amortized-cost-management%2Fmain%2Fazuredeploy.json)
+
+### Option 2: Use this template on GitHub
+
+Click **[Use this template](https://github.com/gitpavleenbali/azure-amortized-cost-management/generate)** at the top of this repository to create your own copy. This gives you a clean repo (no fork history) that you can customise, extend, and deploy through your own CI/CD pipeline.
 
 ---
 
