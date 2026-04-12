@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "7693479918982303267"
+      "templateHash": "7493431951131334890"
     }
   },
   "parameters": {
@@ -829,7 +829,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "12273289408702259765"
+              "templateHash": "13992113559333610042"
             }
           },
           "parameters": {
@@ -878,7 +878,12 @@
                 "consistencyPolicy": {
                   "defaultConsistencyLevel": "Session"
                 },
-                "enableFreeTier": false
+                "enableFreeTier": false,
+                "enableBurstCapacity": false,
+                "enableMultipleWriteLocations": false,
+                "publicNetworkAccess": "Enabled",
+                "minimalTlsVersion": "Tls12",
+                "capacityMode": "Serverless"
               }
             },
             {

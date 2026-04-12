@@ -34,6 +34,11 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' = {
       defaultConsistencyLevel: 'Session'
     }
     enableFreeTier: false
+    enableBurstCapacity: false
+    enableMultipleWriteLocations: false
+    publicNetworkAccess: 'Enabled'
+    minimalTlsVersion: 'Tls12'
+    capacityMode: 'Serverless'
   }
 }
 
