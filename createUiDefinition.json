@@ -110,46 +110,76 @@
           },
           {
             "name": "enableAutoBudget",
-            "type": "Microsoft.Common.CheckBox",
-            "label": "Auto-Budget on new Resource Groups — Automatically assign a default budget when new resource groups are created via Event Grid.",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Auto-Budget on new Resource Groups",
+            "defaultValue": "Enabled",
+            "toolTip": "Automatically assign a default budget when new resource groups are created via Event Grid.",
             "constraints": {
-              "required": false
+              "required": true,
+              "allowedValues": [
+                { "label": "Enabled", "value": true },
+                { "label": "Disabled", "value": false }
+              ]
             },
             "visible": true
           },
           {
             "name": "enableSelfServiceChange",
-            "type": "Microsoft.Common.CheckBox",
-            "label": "Self-Service Budget Changes — Enable an HTTP endpoint for teams to request budget increases with guardrails (floor/cap limits).",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Self-Service Budget Changes",
+            "defaultValue": "Enabled",
+            "toolTip": "Enable an HTTP endpoint for teams to request budget increases with guardrails (floor/cap limits).",
             "constraints": {
-              "required": false
+              "required": true,
+              "allowedValues": [
+                { "label": "Enabled", "value": true },
+                { "label": "Disabled", "value": false }
+              ]
             },
             "visible": true
           },
           {
             "name": "enablePolicy",
-            "type": "Microsoft.Common.CheckBox",
-            "label": "Budget Audit Policy — Deploy an Azure Policy that flags resource groups without a budget (AuditIfNotExists).",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Budget Audit Policy",
+            "defaultValue": "Enabled",
+            "toolTip": "Deploy an Azure Policy that flags resource groups without a budget (AuditIfNotExists).",
             "constraints": {
-              "required": false
+              "required": true,
+              "allowedValues": [
+                { "label": "Enabled", "value": true },
+                { "label": "Disabled", "value": false }
+              ]
             },
             "visible": true
           },
           {
             "name": "enableAmortizedPipeline",
-            "type": "Microsoft.Common.CheckBox",
-            "label": "Amortized Cost Pipeline — Deploy the Function App for daily amortized cost evaluation (requires post-deploy setup of cost export).",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Amortized Cost Pipeline (Function App)",
+            "defaultValue": "Enabled",
+            "toolTip": "Deploy the Function App for daily amortized cost evaluation, Log Analytics workspace, alert rules, and workbook dashboard. Requires post-deploy setup of cost export.",
             "constraints": {
-              "required": false
+              "required": true,
+              "allowedValues": [
+                { "label": "Enabled", "value": true },
+                { "label": "Disabled", "value": false }
+              ]
             },
             "visible": true
           },
           {
             "name": "enableRbacAssignment",
-            "type": "Microsoft.Common.CheckBox",
-            "label": "RBAC Role Assignments — Automatically assign required roles to Logic App managed identities (requires User Access Administrator).",
+            "type": "Microsoft.Common.DropDown",
+            "label": "RBAC Role Assignments",
+            "defaultValue": "Enabled",
+            "toolTip": "Automatically assign required roles to Logic App and Function App managed identities (requires User Access Administrator).",
             "constraints": {
-              "required": false
+              "required": true,
+              "allowedValues": [
+                { "label": "Enabled", "value": true },
+                { "label": "Disabled", "value": false }
+              ]
             },
             "visible": true
           }
@@ -275,7 +305,7 @@
             "toolTip": "Default: func-finops-amortized-{uniqueHash}. Must be globally unique.",
             "placeholder": "func-finops-amortized-myorg",
             "constraints": { "required": false },
-            "visible": "[steps('features').enableAmortizedPipeline]"
+            "visible": "[equals(steps('features').enableAmortizedPipeline, true)]"
           },
           {
             "name": "logicAppAutoBudgetNameOverride",
@@ -285,7 +315,7 @@
             "toolTip": "Default: la-finops-auto-budget",
             "placeholder": "la-finops-auto-budget",
             "constraints": { "required": false },
-            "visible": "[steps('features').enableAutoBudget]"
+            "visible": "[equals(steps('features').enableAutoBudget, true)]"
           },
           {
             "name": "logicAppBudgetChangeNameOverride",
@@ -295,7 +325,7 @@
             "toolTip": "Default: la-finops-budget-change",
             "placeholder": "la-finops-budget-change",
             "constraints": { "required": false },
-            "visible": "[steps('features').enableSelfServiceChange]"
+            "visible": "[equals(steps('features').enableSelfServiceChange, true)]"
           },
           {
             "name": "logicAppBackfillNameOverride",
@@ -305,7 +335,7 @@
             "toolTip": "Default: la-finops-backfill",
             "placeholder": "la-finops-backfill",
             "constraints": { "required": false },
-            "visible": "[and(steps('features').enableAmortizedPipeline, steps('features').enableAutoBudget)]"
+            "visible": "[and(equals(steps('features').enableAmortizedPipeline, true), equals(steps('features').enableAutoBudget, true))]"
           }
         ]
       },
@@ -361,7 +391,7 @@
             "options": {
               "hideConfirmation": true
             },
-            "visible": "[steps('features').enableAmortizedPipeline]"
+            "visible": "[equals(steps('features').enableAmortizedPipeline, true)]"
           },
           {
             "name": "tags",

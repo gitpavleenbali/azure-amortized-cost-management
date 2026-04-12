@@ -45,8 +45,8 @@ param tags object = {
   CostCenter: 'HybridCloud-FinOps'
 }
 
-@description('Enable amortized cost pipeline (requires Function App)')
-param enableAmortizedPipeline bool = false
+@description('Enable amortized cost pipeline (Function App, Log Analytics, Alert Rules, Workbook)')
+param enableAmortizedPipeline bool = true
 
 @description('Enable auto-budget Logic App for new RG creation')
 param enableAutoBudget bool = true

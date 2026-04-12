@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "7493431951131334890"
+      "templateHash": "11051659929830876920"
     }
   },
   "parameters": {
@@ -73,9 +73,9 @@
     },
     "enableAmortizedPipeline": {
       "type": "bool",
-      "defaultValue": false,
+      "defaultValue": true,
       "metadata": {
-        "description": "Enable amortized cost pipeline (requires Function App)"
+        "description": "Enable amortized cost pipeline (Function App, Log Analytics, Alert Rules, Workbook)"
       }
     },
     "enableAutoBudget": {
