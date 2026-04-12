@@ -214,8 +214,7 @@ module workbook 'modules/workbook.json' = {
   scope: rg
   params: {
     location: location
-    inventoryApiUrl: enableAmortizedPipeline ? 'https://${functionApp.outputs.defaultHostName}/api/inventory' : ''
-    varianceApiUrl: enableAmortizedPipeline ? 'https://${functionApp.outputs.defaultHostName}/api/variance' : ''
+    workspaceResourceId: logAnalytics.outputs.workspaceId
   }
 }
 
