@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "4790611442448777979"
+      "templateHash": "3959476867435758015"
     }
   },
   "parameters": {
@@ -852,7 +852,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "13992113559333610042"
+              "templateHash": "11498786883017489638"
             }
           },
           "parameters": {
@@ -879,7 +879,7 @@
           "resources": [
             {
               "type": "Microsoft.DocumentDB/databaseAccounts",
-              "apiVersion": "2024-05-15",
+              "apiVersion": "2024-12-01-preview",
               "name": "[parameters('cosmosAccountName')]",
               "location": "[parameters('location')]",
               "tags": "[union(parameters('tags'), createObject('finops-component', 'inventory-store'))]",
@@ -911,7 +911,7 @@
             },
             {
               "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
-              "apiVersion": "2024-05-15",
+              "apiVersion": "2024-12-01-preview",
               "name": "[format('{0}/{1}', parameters('cosmosAccountName'), parameters('databaseName'))]",
               "properties": {
                 "resource": {
@@ -924,7 +924,7 @@
             },
             {
               "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
-              "apiVersion": "2024-05-15",
+              "apiVersion": "2024-12-01-preview",
               "name": "[format('{0}/{1}/{2}', parameters('cosmosAccountName'), parameters('databaseName'), parameters('containerName'))]",
               "properties": {
                 "resource": {
@@ -964,7 +964,7 @@
             },
             "cosmosEndpoint": {
               "type": "string",
-              "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), '2024-05-15').documentEndpoint]"
+              "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), '2024-12-01-preview').documentEndpoint]"
             },
             "cosmosDatabaseName": {
               "type": "string",
@@ -2428,7 +2428,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "5877636492291254219"
+              "templateHash": "4572106684077113833"
             }
           },
           "parameters": {
@@ -2702,7 +2702,7 @@
             {
               "condition": "[and(parameters('enableRbacAssignment'), not(empty(parameters('cosmosAccountName'))))]",
               "type": "Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments",
-              "apiVersion": "2024-05-15",
+              "apiVersion": "2024-12-01-preview",
               "name": "[format('{0}/{1}', parameters('cosmosAccountName'), guid(resourceId('Microsoft.Web/sites', parameters('functionAppName')), parameters('cosmosAccountName'), 'CosmosDataContributor'))]",
               "properties": {
                 "roleDefinitionId": "[format('{0}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002', resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')))]",
