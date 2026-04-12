@@ -5,19 +5,16 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "11800569006301186139"
+      "templateHash": "2612586843483616223"
     }
   },
   "parameters": {
     "environment": {
       "type": "string",
-      "allowedValues": [
-        "dev",
-        "staging",
-        "prod"
-      ],
+      "minLength": 2,
+      "maxLength": 10,
       "metadata": {
-        "description": "Environment name (dev, staging, prod)"
+        "description": "Environment name — used in resource naming (e.g. dev, staging, prod, uat, sandbox)"
       }
     },
     "location": {

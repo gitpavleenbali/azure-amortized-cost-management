@@ -23,17 +23,15 @@
     "basics": [
       {
         "name": "environment",
-        "type": "Microsoft.Common.DropDown",
+        "type": "Microsoft.Common.TextBox",
         "label": "Environment",
         "defaultValue": "dev",
-        "toolTip": "Select the deployment environment. This determines resource naming and default configurations.",
+        "toolTip": "Short environment name used in resource naming. Common values: dev, staging, prod, uat, sandbox, shared. Lowercase letters and numbers only (2-10 chars).",
+        "placeholder": "e.g. dev, staging, prod, uat, sandbox",
         "constraints": {
           "required": true,
-          "allowedValues": [
-            { "label": "Development", "value": "dev" },
-            { "label": "Staging", "value": "staging" },
-            { "label": "Production", "value": "prod" }
-          ]
+          "regex": "^[a-z][a-z0-9]{1,9}$",
+          "validationMessage": "Environment must be 2-10 lowercase characters (letters and numbers, must start with a letter). Examples: dev, staging, prod, uat, sandbox."
         },
         "visible": true
       },

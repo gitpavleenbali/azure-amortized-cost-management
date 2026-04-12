@@ -12,8 +12,9 @@
 targetScope = 'subscription'
 
 // ── Parameters ───────────────────────────────────────────────
-@description('Environment name (dev, staging, prod)')
-@allowed(['dev', 'staging', 'prod'])
+@description('Environment name — used in resource naming (e.g. dev, staging, prod, uat, sandbox)')
+@minLength(2)
+@maxLength(10)
 param environment string
 
 @description('Azure region for resource deployment')
