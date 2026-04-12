@@ -125,11 +125,11 @@ resource tableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (en
 
 // Grant Cosmos DB Built-in Data Contributor (data plane — read/write to inventory)
 // Cosmos DB uses its own SQL role system, NOT ARM RBAC
-resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-12-01-preview' existing = if (!empty(cosmosAccountName)) {
+resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = if (!empty(cosmosAccountName)) {
   name: cosmosAccountName
 }
 
-resource cosmosDataRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-12-01-preview' = if (enableRbacAssignment && !empty(cosmosAccountName)) {
+resource cosmosDataRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-11-15' = if (enableRbacAssignment && !empty(cosmosAccountName)) {
   parent: cosmosAccount
   name: guid(functionApp.id, cosmosAccountName, 'CosmosDataContributor')
   properties: {

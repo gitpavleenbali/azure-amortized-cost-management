@@ -13,7 +13,9 @@ param containerName string = 'inventory'
 param tags object = {}
 
 // Serverless = pay per request, ideal for 8,000 docs + daily batch
-resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-12-01-preview' = {
+// NOTE: Using GA API (not preview). Serverless via 'EnableServerless' capability.
+// Do NOT use 'capacityMode' — it requires preview API and causes failures.
+resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
   name: cosmosAccountName
   location: location
   tags: union(tags, { 'finops-component': 'inventory-store' })
@@ -34,15 +36,13 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-12-01-preview
       defaultConsistencyLevel: 'Session'
     }
     enableFreeTier: false
-    enableBurstCapacity: false
     enableMultipleWriteLocations: false
     publicNetworkAccess: 'Enabled'
     minimalTlsVersion: 'Tls12'
-    capacityMode: 'Serverless'
   }
 }
 
-resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-12-01-preview' = {
+resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-11-15' = {
   parent: cosmosAccount
   name: databaseName
   properties: {
@@ -52,7 +52,7 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-12-01
   }
 }
 
-resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-12-01-preview' = {
+resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-11-15' = {
   parent: database
   name: containerName
   properties: {
