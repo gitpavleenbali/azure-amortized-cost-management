@@ -21,6 +21,15 @@ param packageUri string = 'https://raw.githubusercontent.com/gitpavleenbali/azur
 @description('Set to false if deployer lacks User Access Administrator role')
 param enableRbacAssignment bool = true
 
+@description('Cosmos DB account name (for data plane role assignment)')
+param cosmosAccountName string = ''
+
+@description('Cosmos DB account ID')
+param cosmosAccountId string = ''
+
+@description('Log Analytics workspace ID (resource ID)')
+param logAnalyticsWorkspaceId string = ''
+
 resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${functionAppName}-plan'
   location: location
@@ -91,6 +100,36 @@ resource tableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (en
   name: guid(functionApp.id, 'StorageTableDataContributor')
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3')
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Grant Cosmos DB Built-in Data Contributor (data plane — read/write to inventory)
+// Cosmos DB uses its own SQL role system, NOT ARM RBAC
+resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' existing = if (!empty(cosmosAccountName)) {
+  name: cosmosAccountName
+}
+
+resource cosmosDataRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2024-05-15' = if (enableRbacAssignment && !empty(cosmosAccountName)) {
+  parent: cosmosAccount
+  name: guid(functionApp.id, cosmosAccountName, 'CosmosDataContributor')
+  properties: {
+    roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002'
+    principalId: functionApp.identity.principalId
+    scope: cosmosAccount.id
+  }
+}
+
+// Grant Cost Management Reader (read cost data for evaluation)
+// Note: subscription-scope assignment — requires subscription targetScope
+// This is handled from the parent main.bicep via a separate module
+
+// Grant Log Analytics Contributor (write amortized cost data to LAW for workbook/alerts)
+resource lawContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (enableRbacAssignment && !empty(logAnalyticsWorkspaceId)) {
+  name: guid(functionApp.id, 'LogAnalyticsContributor')
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '92aaf0da-9dab-42b6-94a3-d43ce8d16293')
     principalId: functionApp.identity.principalId
     principalType: 'ServicePrincipal'
   }

@@ -21,7 +21,9 @@ resource postDeployIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@20
   tags: tags
 }
 
-// Grant Contributor to the managed identity (needed for cost export + function key access)
+// Grant Contributor to the managed identity at resource group scope
+// Note: Cost Management export creation requires Cost Management Contributor
+// which is granted separately at subscription scope from main.bicep
 resource contributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(postDeployIdentity.id, 'Contributor', resourceGroup().id)
   properties: {
@@ -159,3 +161,4 @@ EOF
 
 output scriptStatus string = postDeployScript.properties.provisioningState
 output postDeployIdentityId string = postDeployIdentity.id
+output postDeployIdentityPrincipalId string = postDeployIdentity.properties.principalId

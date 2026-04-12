@@ -116,3 +116,6 @@ resource logicApp 'Microsoft.Logic/workflows@2019-05-01' = {
 output logicAppId string = logicApp.id
 output logicAppName string = logicApp.name
 output principalId string = logicApp.identity.principalId
+
+// Note: subscription-scoped Reader role is assigned from main.bicep
+// via a separate subscription-targeted module

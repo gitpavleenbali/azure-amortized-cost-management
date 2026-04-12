@@ -259,6 +259,8 @@ module functionApp 'modules/function-app.bicep' = if (enableAmortizedPipeline) {
     cosmosEndpoint: cosmosDb.outputs.cosmosEndpoint
     cosmosDatabaseName: cosmosDb.outputs.cosmosDatabaseName
     cosmosContainerName: cosmosDb.outputs.cosmosContainerName
+    cosmosAccountName: cosmosDb.outputs.cosmosAccountName
+    cosmosAccountId: cosmosDb.outputs.cosmosAccountId
     teamsWebhookUri: teamsWebhookUri
     finopsEmail: finopsEmail
     tags: tags
@@ -308,6 +310,33 @@ module postDeploy 'modules/post-deploy.bicep' = if (enableAmortizedPipeline) {
     cosmosDb
     storageAccount
   ]
+}
+
+// ── Subscription-scope RBAC for post-deploy identity ─────────
+// Cost Management Contributor: create/manage cost exports at subscription level
+module postDeploySubRole 'modules/post-deploy-sub-role.bicep' = if (enableAmortizedPipeline) {
+  name: 'deploy-post-deploy-sub-role'
+  params: {
+    principalId: postDeploy.outputs.postDeployIdentityPrincipalId
+  }
+}
+
+// ── Subscription-scope RBAC for Function App ─────────────────
+// Cost Management Reader: read cost data for evaluation
+module functionAppSubRoles 'modules/function-app-sub-roles.bicep' = if (enableAmortizedPipeline && enableRbacAssignment) {
+  name: 'deploy-function-app-sub-roles'
+  params: {
+    functionAppPrincipalId: functionApp.outputs.principalId
+  }
+}
+
+// ── Subscription-scope RBAC for Backfill Logic App ───────────
+// Reader: enumerate resource groups for scheduled backfill
+module backfillSubRole 'modules/backfill-sub-role.bicep' = if (enableAmortizedPipeline && enableAutoBudget && enableRbacAssignment) {
+  name: 'deploy-backfill-sub-reader'
+  params: {
+    principalId: backfillLogicApp.outputs.principalId
+  }
 }
 
 // ── Outputs ──────────────────────────────────────────────────
