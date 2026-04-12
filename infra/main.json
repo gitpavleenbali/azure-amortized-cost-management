@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "9311626737232380180"
+      "templateHash": "7959840528417020286"
     }
   },
   "parameters": {
@@ -2153,9 +2153,6 @@
           "functionAppName": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app'), '2022-09-01').outputs.functionAppName.value]"
           },
-          "functionAppKey": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app'), '2022-09-01').outputs.defaultHostKey.value]"
-          },
           "subscriptionId": {
             "value": "[subscription().subscriptionId]"
           },
@@ -2173,7 +2170,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "8198720298899020749"
+              "templateHash": "7741796670446416859"
             }
           },
           "parameters": {
@@ -2186,9 +2183,6 @@
             },
             "functionAppName": {
               "type": "string"
-            },
-            "functionAppKey": {
-              "type": "securestring"
             },
             "subscriptionId": {
               "type": "string",
@@ -2228,7 +2222,7 @@
                     },
                     "functionKey": {
                       "type": "SecureString",
-                      "defaultValue": "[parameters('functionAppKey')]"
+                      "defaultValue": ""
                     },
                     "subscriptionId": {
                       "type": "String",
@@ -2501,7 +2495,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "7026714135393436645"
+              "templateHash": "14817059413657747036"
             }
           },
           "parameters": {
@@ -2805,10 +2799,6 @@
             "defaultHostName": {
               "type": "string",
               "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01').defaultHostName]"
-            },
-            "defaultHostKey": {
-              "type": "string",
-              "value": "[listKeys(format('{0}/host/default', resourceId('Microsoft.Web/sites', parameters('functionAppName'))), '2023-12-01').functionKeys.default]"
             }
           }
         }
@@ -3303,7 +3293,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "12742588648741085454"
+              "templateHash": "522599048631871931"
             }
           },
           "parameters": {
@@ -3359,6 +3349,23 @@
               ]
             },
             {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-05-01",
+              "name": "[format('stfinopsscript{0}', uniqueString(resourceGroup().id))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "StorageV2",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "properties": {
+                "minimumTlsVersion": "TLS1_2",
+                "supportsHttpsTrafficOnly": true,
+                "allowBlobPublicAccess": false,
+                "allowSharedKeyAccess": true
+              }
+            },
+            {
               "type": "Microsoft.Resources/deploymentScripts",
               "apiVersion": "2023-08-01",
               "name": "finops-post-deploy-kickstart",
@@ -3376,6 +3383,9 @@
                 "retentionInterval": "PT1H",
                 "timeout": "PT30M",
                 "cleanupPreference": "OnSuccess",
+                "storageAccountSettings": {
+                  "storageAccountName": "[format('stfinopsscript{0}', uniqueString(resourceGroup().id))]"
+                },
                 "environmentVariables": [
                   {
                     "name": "SUBSCRIPTION_ID",
@@ -3402,7 +3412,8 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), 'Contributor', resourceGroup().id))]",
-                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]"
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', format('stfinopsscript{0}', uniqueString(resourceGroup().id)))]"
               ]
             }
           ],

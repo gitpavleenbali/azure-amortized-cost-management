@@ -154,5 +154,3 @@ output functionAppName string = functionApp.name
 output functionAppId string = functionApp.id
 output principalId string = functionApp.identity.principalId
 output defaultHostName string = functionApp.properties.defaultHostName
-#disable-next-line outputs-should-not-contain-secrets
-output defaultHostKey string = listKeys('${functionApp.id}/host/default', '2023-12-01').functionKeys.default

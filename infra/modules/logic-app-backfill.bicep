@@ -8,8 +8,6 @@
 param location string
 param logicAppName string = 'la-finops-backfill'
 param functionAppName string
-@secure()
-param functionAppKey string
 param subscriptionId string = subscription().subscriptionId
 param tags object = {}
 
@@ -33,7 +31,7 @@ resource logicApp 'Microsoft.Logic/workflows@2019-05-01' = {
       contentVersion: '1.0.0.0'
       parameters: {
         functionBaseUrl: { type: 'String', defaultValue: 'https://${functionApp.properties.defaultHostName}' }
-        functionKey: { type: 'SecureString', defaultValue: functionAppKey }
+        functionKey: { type: 'SecureString', defaultValue: '' }
         subscriptionId: { type: 'String', defaultValue: subscriptionId }
       }
       triggers: {

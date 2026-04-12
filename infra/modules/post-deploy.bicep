@@ -35,6 +35,21 @@ resource contributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
   }
 }
 
+// Storage account for deployment script (separate from FinOps storage to avoid key-based auth policy conflicts)
+resource scriptStorage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+  name: 'stfinopsscript${uniqueString(resourceGroup().id)}'
+  location: location
+  tags: tags
+  kind: 'StorageV2'
+  sku: { name: 'Standard_LRS' }
+  properties: {
+    minimumTlsVersion: 'TLS1_2'
+    supportsHttpsTrafficOnly: true
+    allowBlobPublicAccess: false
+    allowSharedKeyAccess: true
+  }
+}
+
 resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   name: 'finops-post-deploy-kickstart'
   location: location
@@ -48,12 +63,16 @@ resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   }
   dependsOn: [
     contributorRole
+    scriptStorage
   ]
   properties: {
     azCliVersion: '2.60.0'
     retentionInterval: 'PT1H'
     timeout: 'PT30M'
     cleanupPreference: 'OnSuccess'
+    storageAccountSettings: {
+      storageAccountName: scriptStorage.name
+    }
     environmentVariables: [
       { name: 'SUBSCRIPTION_ID', value: subscriptionId }
       { name: 'STORAGE_ACCOUNT_NAME', value: storageAccountName }
