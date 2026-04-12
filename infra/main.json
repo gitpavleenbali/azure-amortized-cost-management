@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "7959840528417020286"
+      "templateHash": "5505622079877141482"
     }
   },
   "parameters": {
@@ -302,7 +302,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "6645966421576733279"
+              "templateHash": "1222847847721409938"
             }
           },
           "parameters": {
@@ -319,7 +319,10 @@
               "defaultValue": "FinOpsBgt"
             },
             "finopsEmail": {
-              "type": "string"
+              "type": "string",
+              "metadata": {
+                "description": "FinOps team email(s) — comma-separated for multiple recipients (e.g. \"team@org.com,lead@org.com\")"
+              }
             },
             "teamsWebhookUri": {
               "type": "securestring",
@@ -331,7 +334,19 @@
             }
           },
           "variables": {
-            "enableTeams": "[not(empty(parameters('teamsWebhookUri')))]"
+            "copy": [
+              {
+                "name": "emailReceivers",
+                "count": "[length(variables('emailList'))]",
+                "input": {
+                  "name": "[format('finops-recipient-{0}', add(copyIndex('emailReceivers'), 1))]",
+                  "emailAddress": "[variables('emailList')[copyIndex('emailReceivers')]]",
+                  "useCommonAlertSchema": true
+                }
+              }
+            ],
+            "enableTeams": "[not(empty(parameters('teamsWebhookUri')))]",
+            "emailList": "[split(replace(parameters('finopsEmail'), ' ', ''), ',')]"
           },
           "resources": [
             {
@@ -343,13 +358,7 @@
               "properties": {
                 "groupShortName": "[parameters('shortName')]",
                 "enabled": true,
-                "emailReceivers": [
-                  {
-                    "name": "finops-team",
-                    "emailAddress": "[parameters('finopsEmail')]",
-                    "useCommonAlertSchema": true
-                  }
-                ],
+                "emailReceivers": "[variables('emailReceivers')]",
                 "webhookReceivers": "[if(variables('enableTeams'), createArray(createObject('name', 'teams-finops-budget-alerts', 'serviceUri', parameters('teamsWebhookUri'), 'useCommonAlertSchema', true())), createArray())]",
                 "armRoleReceivers": [
                   {

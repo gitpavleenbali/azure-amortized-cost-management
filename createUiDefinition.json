@@ -38,13 +38,13 @@
       {
         "name": "finopsEmail",
         "type": "Microsoft.Common.TextBox",
-        "label": "FinOps Team Email",
-        "toolTip": "Email address for budget alerts and compliance notifications.",
-        "placeholder": "finops-team@contoso.com",
+        "label": "FinOps Team Email(s)",
+        "toolTip": "Email address(es) for budget alerts and compliance notifications. Separate multiple emails with commas (e.g. team@contoso.com,lead@contoso.com).",
+        "placeholder": "finops-team@contoso.com,cfo@contoso.com",
         "constraints": {
           "required": true,
-          "regex": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
-          "validationMessage": "Please enter a valid email address."
+          "regex": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}(\\s*,\\s*[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})*$",
+          "validationMessage": "Enter one or more valid email addresses, separated by commas."
         },
         "visible": true
       }
