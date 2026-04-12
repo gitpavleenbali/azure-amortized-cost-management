@@ -258,6 +258,7 @@ module backfillLogicApp 'modules/logic-app-backfill.bicep' = if (enableAmortized
     location: location
     logicAppName: logicAppBackfillName
     functionAppName: functionApp.outputs.functionAppName
+    functionAppKey: functionApp.outputs.defaultHostKey
     subscriptionId: subscription().subscriptionId
     tags: tags
     enableRbacAssignment: enableRbacAssignment

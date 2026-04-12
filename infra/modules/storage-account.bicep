@@ -34,6 +34,13 @@ resource exportContainer 'Microsoft.Storage/storageAccounts/blobServices/contain
   properties: { publicAccess: 'None' }
 }
 
+// Container for finance budget CSV uploads (blob trigger auto-ingests)
+resource financeContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: 'finance-budgets'
+  properties: { publicAccess: 'None' }
+}
+
 // Table for budget targets (amortized engine reads this)
 resource tableService 'Microsoft.Storage/storageAccounts/tableServices@2023-05-01' = {
   parent: storageAccount

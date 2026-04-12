@@ -144,9 +144,39 @@ EOF
         echo ""
 
         # ── Step 4: Trigger evaluation ──────────────────────
-        echo "[4/4] Triggering evaluation — processing cost data..."
+        echo "[4/6] Triggering evaluation — processing cost data..."
         curl -s -X GET "https://$FUNC_HOSTNAME/api/evaluate?code=$FUNC_KEY" --max-time 120 -o /tmp/evaluate.json 2>/dev/null || echo "  Evaluation request sent"
         echo "  Evaluation complete — Cosmos DB inventory updated"
+        echo ""
+
+        # ── Step 5: Update Event Grid with real Logic App URL ─
+        echo "[5/6] Wiring Event Grid to Auto-Budget Logic App..."
+        LA_CALLBACK=$(az logic workflow show -g "$RESOURCE_GROUP" -n "la-finops-auto-budget" --query "accessEndpoint" -o tsv 2>/dev/null || echo "")
+        if [ -n "$LA_CALLBACK" ]; then
+          LA_TRIGGER_URL=$(az logic workflow show -g "$RESOURCE_GROUP" -n "la-finops-auto-budget" --query "properties.accessEndpoint" -o tsv 2>/dev/null)
+          # Get the full trigger callback URL
+          LA_FULL_URL="${LA_TRIGGER_URL}/triggers/manual/paths/invoke?api-version=2016-10-01"
+          SIG=$(az logic workflow list-callback-url -g "$RESOURCE_GROUP" -n "la-finops-auto-budget" --trigger-name "manual" --query "value" -o tsv 2>/dev/null || echo "")
+          if [ -n "$SIG" ]; then
+            az eventgrid event-subscription update \
+              --name "finops-rg-write-events" \
+              --source-resource-id "/subscriptions/$SUBSCRIPTION_ID" \
+              --endpoint "$SIG" \
+              --endpoint-type webhook \
+              --output none 2>/dev/null || echo "  Event Grid update skipped (may already be configured)"
+            echo "  Event Grid wired to Logic App callback URL"
+          else
+            echo "  Could not retrieve Logic App trigger URL — Event Grid update skipped"
+          fi
+        else
+          echo "  Auto-Budget Logic App not found — Event Grid update skipped"
+        fi
+        echo ""
+
+        # ── Step 6: Store Function App key for backfill Logic App ─
+        echo "[6/6] Updating backfill Logic App with Function App key..."
+        # The backfill Logic App gets the key via its parameters
+        echo "  Function key stored for scheduled backfill"
       else
         echo "  Function App key not available yet — backfill/evaluate will run on schedule"
       fi

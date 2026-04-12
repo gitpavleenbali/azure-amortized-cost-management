@@ -8,7 +8,8 @@
 param location string
 param logicAppName string = 'la-finops-backfill'
 param functionAppName string
-param functionAppKey string = ''
+@secure()
+param functionAppKey string
 param subscriptionId string = subscription().subscriptionId
 param tags object = {}
 
