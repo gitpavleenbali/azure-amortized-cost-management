@@ -50,6 +50,17 @@ resource scriptStorage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   }
 }
 
+// Grant Storage File Data SMB Share Contributor to the identity on the script storage
+resource scriptStorageRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(postDeployIdentity.id, scriptStorage.id, 'StorageFileContributor')
+  scope: scriptStorage
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0c867c2a-1d8c-454a-a3db-ab2ea1bdc8bb')
+    principalId: postDeployIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   name: 'finops-post-deploy-kickstart'
   location: location
@@ -64,6 +75,7 @@ resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   dependsOn: [
     contributorRole
     scriptStorage
+    scriptStorageRole
   ]
   properties: {
     azCliVersion: '2.60.0'
