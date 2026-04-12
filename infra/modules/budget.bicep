@@ -31,11 +31,11 @@ param buLeadEmail string = ''
 @description('Action Group resource ID')
 param actionGroupId string = ''
 
-@description('Budget start date')
-param startDate string = '${utcNow('yyyy')}-${utcNow('MM')}-01T00:00:00Z'
+@description('Budget start date (YYYY-MM-01 format). Once created, this cannot change — delete and recreate the budget to use a different start date.')
+param startDate string
 
 @description('Budget end date')
-param endDate string = '2027-03-31T00:00:00Z'
+param endDate string = '2027-12-31T00:00:00Z'
 
 param tags object = {}
 

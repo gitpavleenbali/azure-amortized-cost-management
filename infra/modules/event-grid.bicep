@@ -9,7 +9,10 @@ targetScope = 'subscription'
 param logicAppCallbackUrl string
 param eventSubscriptionName string = 'finops-rg-write-events'
 
-resource eventSubscription 'Microsoft.EventGrid/eventSubscriptions@2024-06-01-preview' = {
+// Skip deployment if using placeholder URL — Event Grid requires a valid webhook for validation handshake
+var isPlaceholderUrl = startsWith(logicAppCallbackUrl, 'https://placeholder')
+
+resource eventSubscription 'Microsoft.EventGrid/eventSubscriptions@2024-06-01-preview' = if (!isPlaceholderUrl) {
   name: eventSubscriptionName
   properties: {
     destination: {
@@ -39,4 +42,4 @@ resource eventSubscription 'Microsoft.EventGrid/eventSubscriptions@2024-06-01-pr
   }
 }
 
-output eventSubscriptionId string = eventSubscription.id
+output eventSubscriptionId string = isPlaceholderUrl ? 'placeholder-configure-post-deploy' : eventSubscription.id

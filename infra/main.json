@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "2612586843483616223"
+      "templateHash": "1409165214860480710"
     }
   },
   "parameters": {
@@ -111,6 +111,13 @@
       "defaultValue": "",
       "metadata": {
         "description": "Function App host key for Cosmos sync from budget-change Logic App (set post-deploy)"
+      }
+    },
+    "budgetStartDate": {
+      "type": "string",
+      "defaultValue": "2026-04-01T00:00:00Z",
+      "metadata": {
+        "description": "Budget start date (first of current month). Once a budget is created, the start date cannot be changed — delete and recreate instead."
       }
     }
   },
@@ -254,6 +261,9 @@
           "actionGroupId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-action-group'), '2022-09-01').outputs.actionGroupId.value]"
           },
+          "startDate": {
+            "value": "[parameters('budgetStartDate')]"
+          },
           "tags": {
             "value": "[parameters('tags')]"
           }
@@ -265,7 +275,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "13481610797217475565"
+              "templateHash": "17378177549791879760"
             }
           },
           "parameters": {
@@ -328,14 +338,13 @@
             },
             "startDate": {
               "type": "string",
-              "defaultValue": "[format('{0}-{1}-01T00:00:00Z', utcNow('yyyy'), utcNow('MM'))]",
               "metadata": {
-                "description": "Budget start date"
+                "description": "Budget start date (YYYY-MM-01 format). Once created, this cannot change — delete and recreate the budget to use a different start date."
               }
             },
             "endDate": {
               "type": "string",
-              "defaultValue": "2027-03-31T00:00:00Z",
+              "defaultValue": "2027-12-31T00:00:00Z",
               "metadata": {
                 "description": "Budget end date"
               }
@@ -735,7 +744,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "3708617252769135393"
+              "templateHash": "12273289408702259765"
             }
           },
           "parameters": {
@@ -777,7 +786,8 @@
                 "locations": [
                   {
                     "locationName": "[parameters('location')]",
-                    "failoverPriority": 0
+                    "failoverPriority": 0,
+                    "isZoneRedundant": false
                   }
                 ],
                 "consistencyPolicy": {
@@ -1804,7 +1814,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "18199730571682221197"
+              "templateHash": "3188444123710615289"
             }
           },
           "parameters": {
@@ -1816,8 +1826,12 @@
               "defaultValue": "finops-rg-write-events"
             }
           },
+          "variables": {
+            "isPlaceholderUrl": "[startsWith(parameters('logicAppCallbackUrl'), 'https://placeholder')]"
+          },
           "resources": [
             {
+              "condition": "[not(variables('isPlaceholderUrl'))]",
               "type": "Microsoft.EventGrid/eventSubscriptions",
               "apiVersion": "2024-06-01-preview",
               "name": "[parameters('eventSubscriptionName')]",
@@ -1856,7 +1870,7 @@
           "outputs": {
             "eventSubscriptionId": {
               "type": "string",
-              "value": "[subscriptionResourceId('Microsoft.EventGrid/eventSubscriptions', parameters('eventSubscriptionName'))]"
+              "value": "[if(variables('isPlaceholderUrl'), 'placeholder-configure-post-deploy', subscriptionResourceId('Microsoft.EventGrid/eventSubscriptions', parameters('eventSubscriptionName')))]"
             }
           }
         }

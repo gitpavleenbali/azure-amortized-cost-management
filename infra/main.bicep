@@ -64,6 +64,9 @@ param enableRbacAssignment bool = true
 @secure()
 param functionAppKey string = ''
 
+@description('Budget start date (first of current month). Once a budget is created, the start date cannot be changed — delete and recreate instead.')
+param budgetStartDate string = '2026-04-01T00:00:00Z'
+
 // ── Resource Group ───────────────────────────────────────────
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
@@ -92,6 +95,7 @@ module subscriptionBudget 'modules/budget.bicep' = {
     scope: 'subscription'
     finopsEmail: finopsEmail
     actionGroupId: actionGroup.outputs.actionGroupId
+    startDate: budgetStartDate
     tags: tags
   }
 }
