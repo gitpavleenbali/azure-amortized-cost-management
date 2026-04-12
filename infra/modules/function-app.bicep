@@ -15,6 +15,9 @@ param teamsWebhookUri string = ''
 param finopsEmail string
 param tags object = {}
 
+@description('URL to the Function App zip package for automated deployment')
+param packageUri string = 'https://raw.githubusercontent.com/gitpavleenbali/azure-amortized-cost-management/main/functions/amortized-budget-engine.zip'
+
 @description('Set to false if deployer lacks User Access Administrator role')
 param enableRbacAssignment bool = true
 
@@ -55,6 +58,9 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'TEAMS_WEBHOOK_URL', value: teamsWebhookUri }
         { name: 'FINOPS_EMAIL', value: finopsEmail }
         { name: 'ALERT_THRESHOLDS', value: '50,75,90,100,110' }
+        { name: 'WEBSITE_RUN_FROM_PACKAGE', value: packageUri }
+        { name: 'SCM_DO_BUILD_DURING_DEPLOYMENT', value: 'true' }
+        { name: 'ENABLE_ORYX_BUILD', value: 'true' }
       ]
     }
   }

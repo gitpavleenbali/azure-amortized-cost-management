@@ -288,6 +288,28 @@ module networking 'modules/networking.bicep' = if (enablePrivateNetworking) {
   ]
 }
 
+// ── Module 11: Post-Deploy Kickstart (Automatic) ─────────────
+// Runs as part of the ARM deployment — no manual steps needed.
+// Creates cost export, triggers backfill + evaluation.
+module postDeploy 'modules/post-deploy.bicep' = if (enableAmortizedPipeline) {
+  name: 'deploy-post-deploy-kickstart'
+  scope: rg
+  params: {
+    location: location
+    storageAccountName: storageAccount.outputs.storageAccountName
+    storageAccountId: storageAccount.outputs.storageAccountId
+    functionAppName: functionApp.outputs.functionAppName
+    functionAppResourceGroup: rg.name
+    subscriptionId: subscription().subscriptionId
+    tags: tags
+  }
+  dependsOn: [
+    functionApp
+    cosmosDb
+    storageAccount
+  ]
+}
+
 // ── Outputs ──────────────────────────────────────────────────
 output resourceGroupName string = rg.name
 output actionGroupId string = actionGroup.outputs.actionGroupId
