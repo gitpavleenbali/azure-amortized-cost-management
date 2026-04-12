@@ -474,8 +474,15 @@
             "resources": [
               "Microsoft.Storage/storageAccounts",
               "Microsoft.Web/sites",
+              "Microsoft.Web/serverfarms",
               "Microsoft.DocumentDB/databaseAccounts",
-              "Microsoft.Logic/workflows"
+              "Microsoft.Logic/workflows",
+              "Microsoft.OperationalInsights/workspaces",
+              "Microsoft.Insights/actionGroups",
+              "Microsoft.Insights/scheduledQueryRules",
+              "Microsoft.Insights/workbooks",
+              "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "Microsoft.Network/virtualNetworks"
             ],
             "visible": true
           }
