@@ -28,6 +28,7 @@ resource alertHeadUp 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview'
     description: 'Resource groups where amortized spend has reached 60% of budget. Early awareness for FinOps team.'
     severity: 3
     enabled: true
+    skipQueryValidation: true
     evaluationFrequency: 'PT1H'
     windowSize: 'PT1H'
     scopes: [
@@ -71,6 +72,7 @@ resource alertWarning 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview
     description: 'Resource groups where amortized spend has reached 80% of budget. Action needed to prevent overspend.'
     severity: 2
     enabled: true
+    skipQueryValidation: true
     evaluationFrequency: 'PT1H'
     windowSize: 'PT1H'
     scopes: [
@@ -113,6 +115,7 @@ resource alertCritical 'Microsoft.Insights/scheduledQueryRules@2023-03-15-previe
     description: 'Resource groups where amortized spend has reached 95% of budget. Immediate action required.'
     severity: 1
     enabled: true
+    skipQueryValidation: true
     evaluationFrequency: 'PT1H'
     windowSize: 'PT1H'
     scopes: [

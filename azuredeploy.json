@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "13155610499963182386"
+      "templateHash": "13948129701191019829"
     }
   },
   "parameters": {
@@ -1163,7 +1163,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "3162121547952310313"
+              "templateHash": "7451338357341176863"
             }
           },
           "parameters": {
@@ -1211,6 +1211,7 @@
                 "description": "Resource groups where amortized spend has reached 60% of budget. Early awareness for FinOps team.",
                 "severity": 3,
                 "enabled": true,
+                "skipQueryValidation": true,
                 "evaluationFrequency": "PT1H",
                 "windowSize": "PT1H",
                 "scopes": [
@@ -1248,6 +1249,7 @@
                 "description": "Resource groups where amortized spend has reached 80% of budget. Action needed to prevent overspend.",
                 "severity": 2,
                 "enabled": true,
+                "skipQueryValidation": true,
                 "evaluationFrequency": "PT1H",
                 "windowSize": "PT1H",
                 "scopes": [
@@ -1285,6 +1287,7 @@
                 "description": "Resource groups where amortized spend has reached 95% of budget. Immediate action required.",
                 "severity": 1,
                 "enabled": true,
+                "skipQueryValidation": true,
                 "evaluationFrequency": "PT1H",
                 "windowSize": "PT1H",
                 "scopes": [
