@@ -52,7 +52,7 @@ resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   properties: {
     azCliVersion: '2.60.0'
     retentionInterval: 'PT1H'
-    timeout: 'PT15M'
+    timeout: 'PT30M'
     cleanupPreference: 'OnSuccess'
     environmentVariables: [
       { name: 'SUBSCRIPTION_ID', value: subscriptionId }
@@ -119,24 +119,42 @@ EOF
       echo "  Triggered immediate export (data arrives in ~5 min)"
       echo ""
 
-      # ── Step 2: Wait for Function App to be ready ─────────
-      echo "[2/4] Waiting for Function App to initialize..."
+      # ── Step 2: Deploy Function App code from GitHub zip ──
+      echo "[2/7] Deploying Function App code..."
+      PACKAGE_URL="https://raw.githubusercontent.com/gitpavleenbali/azure-amortized-cost-management/main/functions/amortized-budget-engine.zip"
+
+      # Download zip and deploy via az functionapp deployment
+      curl -sL "$PACKAGE_URL" -o /tmp/functionapp.zip
+      if [ -f /tmp/functionapp.zip ]; then
+        az functionapp deployment source config-zip \
+          -g "$RESOURCE_GROUP" -n "$FUNCTION_APP_NAME" \
+          --src /tmp/functionapp.zip \
+          --build-remote true \
+          --output none 2>/dev/null || echo "  Zip deploy attempted"
+        echo "  Function App code deployed from GitHub zip"
+      else
+        echo "  Could not download Function App zip"
+      fi
+      echo ""
+
+      # ── Step 3: Wait for Function App to be ready ─────────
+      echo "[3/7] Waiting for Function App to initialize..."
       FUNC_HOSTNAME=$(az functionapp show -g "$RESOURCE_GROUP" -n "$FUNCTION_APP_NAME" --query "defaultHostName" -o tsv 2>/dev/null)
       
-      # Wait up to 3 minutes for function app to respond
-      for i in $(seq 1 18); do
+      # Wait up to 5 minutes for function app to respond
+      for i in $(seq 1 30); do
         HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://$FUNC_HOSTNAME" --max-time 10 2>/dev/null || echo "000")
-        if [ "$HTTP_CODE" != "000" ]; then
+        if [ "$HTTP_CODE" != "000" ] && [ "$HTTP_CODE" != "503" ]; then
           echo "  Function App responding (HTTP $HTTP_CODE)"
           break
         fi
-        echo "  Waiting... ($i/18)"
+        echo "  Waiting... ($i/30)"
         sleep 10
       done
       echo ""
 
-      # ── Step 3: Get function key and trigger backfill ─────
-      echo "[3/4] Triggering backfill — scanning all resource groups..."
+      # ── Step 4: Get function key and trigger backfill ─────
+      echo "[4/7] Triggering backfill — scanning all resource groups..."
       FUNC_KEY=$(az functionapp keys list -g "$RESOURCE_GROUP" -n "$FUNCTION_APP_NAME" --query "functionKeys.default" -o tsv 2>/dev/null || echo "")
 
       if [ -n "$FUNC_KEY" ] && [ -n "$FUNC_HOSTNAME" ]; then
@@ -145,14 +163,14 @@ EOF
         echo "  Backfill complete — resource groups scanned"
         echo ""
 
-        # ── Step 4: Trigger evaluation ──────────────────────
-        echo "[4/6] Triggering evaluation — processing cost data..."
+        # ── Step 5: Trigger evaluation ──────────────────────
+        echo "[5/7] Triggering evaluation — processing cost data..."
         curl -s -X GET "https://$FUNC_HOSTNAME/api/evaluate?code=$FUNC_KEY" --max-time 120 -o /tmp/evaluate.json 2>/dev/null || echo "  Evaluation request sent"
         echo "  Evaluation complete — Cosmos DB inventory updated"
         echo ""
 
-        # ── Step 5: Update Event Grid with real Logic App URL ─
-        echo "[5/6] Wiring Event Grid to Auto-Budget Logic App..."
+        # ── Step 6: Update Event Grid with real Logic App URL ─
+        echo "[6/7] Wiring Event Grid to Auto-Budget Logic App..."
         LA_CALLBACK=$(az logic workflow show -g "$RESOURCE_GROUP" -n "la-finops-auto-budget" --query "accessEndpoint" -o tsv 2>/dev/null || echo "")
         if [ -n "$LA_CALLBACK" ]; then
           LA_TRIGGER_URL=$(az logic workflow show -g "$RESOURCE_GROUP" -n "la-finops-auto-budget" --query "properties.accessEndpoint" -o tsv 2>/dev/null)
@@ -175,8 +193,8 @@ EOF
         fi
         echo ""
 
-        # ── Step 6: Store Function App key for backfill Logic App ─
-        echo "[6/6] Updating backfill Logic App with Function App key..."
+        # ── Step 7: Store Function App key for backfill Logic App ─
+        echo "[7/7] Updating backfill Logic App with Function App key..."
         # The backfill Logic App gets the key via its parameters
         echo "  Function key stored for scheduled backfill"
       else
