@@ -15,8 +15,10 @@ param tags object = {}
 @description('Subscription ID for cost export scope')
 param subscriptionId string
 
+param identityName string = 'id-finops-post-deploy'
+
 resource postDeployIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: 'id-finops-post-deploy'
+  name: identityName
   location: location
   tags: tags
 }

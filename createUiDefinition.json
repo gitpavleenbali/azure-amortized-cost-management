@@ -271,87 +271,146 @@
             "type": "Microsoft.Common.InfoBox",
             "visible": true,
             "options": {
-              "text": "Override default resource names if your organization has specific naming conventions. Leave blank to use Cloud Adoption Framework defaults (ag-, la-, func-, cosmos-, sa-).",
+              "text": "By default, all resources use Cloud Adoption Framework (CAF) naming conventions. Toggle on custom naming if your organization requires specific resource names.",
               "style": "Info"
             }
           },
           {
+            "name": "useCustomNaming",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Use custom resource names — Override the default CAF naming convention for all resources.",
+            "constraints": { "required": false },
+            "visible": true
+          },
+          {
             "name": "actionGroupNameOverride",
             "type": "Microsoft.Common.TextBox",
-            "label": "Action Group Name",
+            "label": "Action Group",
             "defaultValue": "",
             "toolTip": "Default: ag-finops-budget-alerts",
             "placeholder": "ag-finops-budget-alerts",
             "constraints": { "required": false },
-            "visible": true
+            "visible": "[steps('naming').useCustomNaming]"
           },
           {
             "name": "cosmosAccountNameOverride",
             "type": "Microsoft.Common.TextBox",
-            "label": "Cosmos DB Account Name",
+            "label": "Cosmos DB Account",
             "defaultValue": "",
-            "toolTip": "Default: cosmos-finops-{uniqueHash}. Must be globally unique, 3-44 lowercase chars.",
+            "toolTip": "Must be globally unique, 3-44 lowercase chars. Default: cosmos-finops-{hash}",
             "placeholder": "cosmos-finops-myorg",
-            "constraints": {
-              "required": false,
-              "regex": "^$|^[a-z][a-z0-9-]{2,43}$",
-              "validationMessage": "Cosmos DB name must be 3-44 lowercase characters (letters, numbers, hyphens)."
-            },
-            "visible": true
+            "constraints": { "required": false, "regex": "^$|^[a-z][a-z0-9-]{2,43}$", "validationMessage": "3-44 lowercase letters, numbers, hyphens." },
+            "visible": "[steps('naming').useCustomNaming]"
           },
           {
             "name": "storageAccountNameOverride",
             "type": "Microsoft.Common.TextBox",
-            "label": "Storage Account Name",
+            "label": "Storage Account",
             "defaultValue": "",
-            "toolTip": "Default: sa{env}{uniqueHash}. Must be globally unique, 3-24 lowercase alphanumeric.",
+            "toolTip": "Must be globally unique, 3-24 lowercase. Default: sa{env}{hash}",
             "placeholder": "safinopsmyorg",
-            "constraints": {
-              "required": false,
-              "regex": "^$|^[a-z0-9]{3,24}$",
-              "validationMessage": "Storage account name must be 3-24 lowercase letters and numbers only."
-            },
-            "visible": true
+            "constraints": { "required": false, "regex": "^$|^[a-z0-9]{3,24}$", "validationMessage": "3-24 lowercase letters and numbers." },
+            "visible": "[steps('naming').useCustomNaming]"
           },
           {
             "name": "functionAppNameOverride",
             "type": "Microsoft.Common.TextBox",
-            "label": "Function App Name",
+            "label": "Function App",
             "defaultValue": "",
-            "toolTip": "Default: func-finops-amortized-{uniqueHash}. Must be globally unique.",
+            "toolTip": "Must be globally unique. Default: func-finops-amortized-{hash}",
             "placeholder": "func-finops-amortized-myorg",
             "constraints": { "required": false },
-            "visible": "[equals(steps('features').enableAmortizedPipeline, true)]"
+            "visible": "[steps('naming').useCustomNaming]"
           },
           {
             "name": "logicAppAutoBudgetNameOverride",
             "type": "Microsoft.Common.TextBox",
-            "label": "Auto-Budget Logic App Name",
+            "label": "Auto-Budget Logic App",
             "defaultValue": "",
             "toolTip": "Default: la-finops-auto-budget",
             "placeholder": "la-finops-auto-budget",
             "constraints": { "required": false },
-            "visible": "[equals(steps('features').enableAutoBudget, true)]"
+            "visible": "[steps('naming').useCustomNaming]"
           },
           {
             "name": "logicAppBudgetChangeNameOverride",
             "type": "Microsoft.Common.TextBox",
-            "label": "Budget Change Logic App Name",
+            "label": "Budget Change Logic App",
             "defaultValue": "",
             "toolTip": "Default: la-finops-budget-change",
             "placeholder": "la-finops-budget-change",
             "constraints": { "required": false },
-            "visible": "[equals(steps('features').enableSelfServiceChange, true)]"
+            "visible": "[steps('naming').useCustomNaming]"
           },
           {
             "name": "logicAppBackfillNameOverride",
             "type": "Microsoft.Common.TextBox",
-            "label": "Backfill Logic App Name",
+            "label": "Backfill Logic App",
             "defaultValue": "",
             "toolTip": "Default: la-finops-backfill",
             "placeholder": "la-finops-backfill",
             "constraints": { "required": false },
-            "visible": "[and(equals(steps('features').enableAmortizedPipeline, true), equals(steps('features').enableAutoBudget, true))]"
+            "visible": "[steps('naming').useCustomNaming]"
+          },
+          {
+            "name": "lawNameOverride",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Log Analytics Workspace",
+            "defaultValue": "",
+            "toolTip": "Default: law-finops-budget",
+            "placeholder": "law-finops-budget",
+            "constraints": { "required": false },
+            "visible": "[steps('naming').useCustomNaming]"
+          },
+          {
+            "name": "workbookNameOverride",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Workbook Dashboard",
+            "defaultValue": "",
+            "toolTip": "Default: FinOps Budget Compliance Dashboard",
+            "placeholder": "FinOps Budget Compliance Dashboard",
+            "constraints": { "required": false },
+            "visible": "[steps('naming').useCustomNaming]"
+          },
+          {
+            "name": "alertHeadUpNameOverride",
+            "type": "Microsoft.Common.TextBox",
+            "label": "HeadUp Alert Rule",
+            "defaultValue": "",
+            "toolTip": "Default: finops-alert-headup",
+            "placeholder": "finops-alert-headup",
+            "constraints": { "required": false },
+            "visible": "[steps('naming').useCustomNaming]"
+          },
+          {
+            "name": "alertWarningNameOverride",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Warning Alert Rule",
+            "defaultValue": "",
+            "toolTip": "Default: finops-alert-warning",
+            "placeholder": "finops-alert-warning",
+            "constraints": { "required": false },
+            "visible": "[steps('naming').useCustomNaming]"
+          },
+          {
+            "name": "alertCriticalNameOverride",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Critical Alert Rule",
+            "defaultValue": "",
+            "toolTip": "Default: finops-alert-critical",
+            "placeholder": "finops-alert-critical",
+            "constraints": { "required": false },
+            "visible": "[steps('naming').useCustomNaming]"
+          },
+          {
+            "name": "postDeployIdentityNameOverride",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Post-Deploy Managed Identity",
+            "defaultValue": "",
+            "toolTip": "Default: id-finops-post-deploy",
+            "placeholder": "id-finops-post-deploy",
+            "constraints": { "required": false },
+            "visible": "[steps('naming').useCustomNaming]"
           }
         ]
       },
@@ -445,6 +504,12 @@
       "logicAppAutoBudgetNameOverride": "[steps('naming').logicAppAutoBudgetNameOverride]",
       "logicAppBudgetChangeNameOverride": "[steps('naming').logicAppBudgetChangeNameOverride]",
       "logicAppBackfillNameOverride": "[steps('naming').logicAppBackfillNameOverride]",
+      "lawNameOverride": "[steps('naming').lawNameOverride]",
+      "workbookNameOverride": "[steps('naming').workbookNameOverride]",
+      "alertHeadUpNameOverride": "[steps('naming').alertHeadUpNameOverride]",
+      "alertWarningNameOverride": "[steps('naming').alertWarningNameOverride]",
+      "alertCriticalNameOverride": "[steps('naming').alertCriticalNameOverride]",
+      "postDeployIdentityNameOverride": "[steps('naming').postDeployIdentityNameOverride]",
       "resourceGroupName": "[if(equals(steps('advanced').resourceGroupName, ''), concat('rg-finops-governance-', basics('environment')), steps('advanced').resourceGroupName)]",
       "teamsWebhookUri": "[steps('advanced').teamsWebhookUri]",
       "functionAppKey": "[steps('advanced').functionAppKey]"

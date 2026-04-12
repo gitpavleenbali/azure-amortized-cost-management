@@ -93,6 +93,24 @@ param logicAppBudgetChangeNameOverride string = ''
 @description('Custom name for the Backfill Logic App (leave blank for default: la-finops-backfill)')
 param logicAppBackfillNameOverride string = ''
 
+@description('Custom name for the Log Analytics workspace (leave blank for default: law-finops-budget)')
+param lawNameOverride string = ''
+
+@description('Custom name for the Workbook (leave blank for default: FinOps Budget Compliance Dashboard)')
+param workbookNameOverride string = ''
+
+@description('Custom name for the HeadUp alert rule (leave blank for default: finops-alert-headup)')
+param alertHeadUpNameOverride string = ''
+
+@description('Custom name for the Warning alert rule (leave blank for default: finops-alert-warning)')
+param alertWarningNameOverride string = ''
+
+@description('Custom name for the Critical alert rule (leave blank for default: finops-alert-critical)')
+param alertCriticalNameOverride string = ''
+
+@description('Custom name for the post-deploy managed identity (leave blank for default: id-finops-post-deploy)')
+param postDeployIdentityNameOverride string = ''
+
 // ── Networking (v2) ──────────────────────────────────────────
 @description('Enable private networking — deploys VNet, private endpoints for Cosmos DB & Storage, and Function App VNet integration')
 param enablePrivateNetworking bool = false
@@ -111,6 +129,12 @@ var functionAppComputedName = empty(functionAppNameOverride) ? 'func-finops-amor
 var logicAppAutoBudgetName = empty(logicAppAutoBudgetNameOverride) ? 'la-finops-auto-budget' : logicAppAutoBudgetNameOverride
 var logicAppBudgetChangeName = empty(logicAppBudgetChangeNameOverride) ? 'la-finops-budget-change' : logicAppBudgetChangeNameOverride
 var logicAppBackfillName = empty(logicAppBackfillNameOverride) ? 'la-finops-backfill' : logicAppBackfillNameOverride
+var lawWorkspaceName = empty(lawNameOverride) ? 'law-finops-budget' : lawNameOverride
+var workbookDisplayName = empty(workbookNameOverride) ? 'FinOps Budget Compliance Dashboard' : workbookNameOverride
+var alertHeadUpName = empty(alertHeadUpNameOverride) ? 'finops-alert-headup' : alertHeadUpNameOverride
+var alertWarningName = empty(alertWarningNameOverride) ? 'finops-alert-warning' : alertWarningNameOverride
+var alertCriticalName = empty(alertCriticalNameOverride) ? 'finops-alert-critical' : alertCriticalNameOverride
+var postDeployIdentityName = empty(postDeployIdentityNameOverride) ? 'id-finops-post-deploy' : postDeployIdentityNameOverride
 
 // ── Resource Group ───────────────────────────────────────────
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
@@ -195,7 +219,7 @@ module logAnalytics 'modules/log-analytics.bicep' = {
   scope: rg
   params: {
     location: location
-    workspaceName: 'law-finops-budget'
+    workspaceName: lawWorkspaceName
     tags: tags
   }
 }
@@ -208,6 +232,9 @@ module alertRules 'modules/alert-rules.bicep' = {
     location: location
     workspaceId: logAnalytics.outputs.workspaceId
     actionGroupId: actionGroup.outputs.actionGroupId
+    alertHeadUpName: alertHeadUpName
+    alertWarningName: alertWarningName
+    alertCriticalName: alertCriticalName
     tags: tags
   }
 }
@@ -219,6 +246,7 @@ module workbook 'modules/workbook.json' = {
   params: {
     location: location
     workspaceResourceId: logAnalytics.outputs.workspaceId
+    workbookName: workbookDisplayName
   }
 }
 
@@ -346,6 +374,7 @@ module postDeploy 'modules/post-deploy.bicep' = if (enableAmortizedPipeline) {
     functionAppName: functionApp.outputs.functionAppName
     functionAppResourceGroup: rg.name
     subscriptionId: subscription().subscriptionId
+    identityName: postDeployIdentityName
     tags: tags
   }
   dependsOn: [

@@ -14,9 +14,13 @@ param workspaceId string
 @description('Action Group resource ID for alert routing')
 param actionGroupId string
 
+param alertHeadUpName string = 'finops-alert-headup'
+param alertWarningName string = 'finops-alert-warning'
+param alertCriticalName string = 'finops-alert-critical'
+
 // ── HeadUp Alert (60% threshold) ─────────────────────────────
 resource alertHeadUp 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview' = {
-  name: 'finops-alert-headup'
+  name: alertHeadUpName
   location: location
   tags: union(tags, { 'finops-component': 'alert-headup' })
   properties: {
@@ -59,7 +63,7 @@ resource alertHeadUp 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview'
 
 // ── Warning Alert (80% threshold) ────────────────────────────
 resource alertWarning 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview' = {
-  name: 'finops-alert-warning'
+  name: alertWarningName
   location: location
   tags: union(tags, { 'finops-component': 'alert-warning' })
   properties: {
@@ -101,7 +105,7 @@ resource alertWarning 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview
 
 // ── Critical Alert (95% threshold) ───────────────────────────
 resource alertCritical 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview' = {
-  name: 'finops-alert-critical'
+  name: alertCriticalName
   location: location
   tags: union(tags, { 'finops-component': 'alert-critical' })
   properties: {
