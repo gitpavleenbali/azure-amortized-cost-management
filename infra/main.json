@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "2104127195661807695"
+      "templateHash": "11800569006301186139"
     }
   },
   "parameters": {
@@ -234,7 +234,7 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "deploy-subscription-budget",
+      "name": "[format('deploy-subscription-budget-{0}', parameters('location'))]",
       "location": "[deployment().location]",
       "properties": {
         "expressionEvaluationOptions": {
@@ -432,7 +432,7 @@
       "condition": "[parameters('enablePolicy')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "deploy-policy-definition",
+      "name": "[format('deploy-policy-definition-{0}', parameters('location'))]",
       "location": "[deployment().location]",
       "properties": {
         "expressionEvaluationOptions": {
@@ -524,7 +524,7 @@
       "condition": "[parameters('enablePolicy')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "deploy-policy-assignment",
+      "name": "[format('deploy-policy-assignment-{0}', parameters('location'))]",
       "location": "[deployment().location]",
       "properties": {
         "expressionEvaluationOptions": {
@@ -533,7 +533,7 @@
         "mode": "Incremental",
         "parameters": {
           "policyDefinitionId": {
-            "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-policy-definition'), '2022-09-01').outputs.policyDefinitionId.value]"
+            "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('deploy-policy-definition-{0}', parameters('location'))), '2022-09-01').outputs.policyDefinitionId.value]"
           },
           "environment": {
             "value": "[parameters('environment')]"
@@ -582,7 +582,7 @@
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-policy-definition')]"
+        "[subscriptionResourceId('Microsoft.Resources/deployments', format('deploy-policy-definition-{0}', parameters('location')))]"
       ]
     },
     {
@@ -1788,7 +1788,7 @@
       "condition": "[parameters('enableAutoBudget')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "deploy-event-grid",
+      "name": "[format('deploy-event-grid-{0}', parameters('location'))]",
       "location": "[deployment().location]",
       "properties": {
         "expressionEvaluationOptions": {
@@ -2141,11 +2141,11 @@
     },
     "subscriptionBudgetId": {
       "type": "string",
-      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-subscription-budget'), '2022-09-01').outputs.budgetId.value]"
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('deploy-subscription-budget-{0}', parameters('location'))), '2022-09-01').outputs.budgetId.value]"
     },
     "policyDefinitionId": {
       "type": "string",
-      "value": "[if(parameters('enablePolicy'), reference(subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-policy-definition'), '2022-09-01').outputs.policyDefinitionId.value, 'disabled')]"
+      "value": "[if(parameters('enablePolicy'), reference(subscriptionResourceId('Microsoft.Resources/deployments', format('deploy-policy-definition-{0}', parameters('location'))), '2022-09-01').outputs.policyDefinitionId.value, 'disabled')]"
     },
     "autoBudgetLogicAppUrl": {
       "type": "string",

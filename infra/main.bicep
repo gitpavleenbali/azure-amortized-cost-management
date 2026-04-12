@@ -84,7 +84,7 @@ module actionGroup 'modules/action-group.bicep' = {
 
 // ── Module 2: Subscription Budget (QW-02) ────────────────────
 module subscriptionBudget 'modules/budget.bicep' = {
-  name: 'deploy-subscription-budget'
+  name: 'deploy-subscription-budget-${location}'
   params: {
     budgetName: 'finops-sub-budget-${environment}'
     budgetAmount: subscriptionBudgetAmount
@@ -97,7 +97,7 @@ module subscriptionBudget 'modules/budget.bicep' = {
 
 // ── Module 3: Policy Definition (QW-04) ──────────────────────
 module policyDefinition 'modules/policy-definition.bicep' = if (enablePolicy) {
-  name: 'deploy-policy-definition'
+  name: 'deploy-policy-definition-${location}'
   params: {
     environment: environment
   }
@@ -105,7 +105,7 @@ module policyDefinition 'modules/policy-definition.bicep' = if (enablePolicy) {
 
 // ── Module 4: Policy Assignment (QW-04) ──────────────────────
 module policyAssignment 'modules/policy-assignment.bicep' = if (enablePolicy) {
-  name: 'deploy-policy-assignment'
+  name: 'deploy-policy-assignment-${location}'
   params: {
     policyDefinitionId: policyDefinition.outputs.policyDefinitionId
     environment: environment
@@ -188,7 +188,7 @@ module backfillLogicApp 'modules/logic-app-backfill.bicep' = if (enableAmortized
 // After deployment, update via: az eventgrid event-subscription create
 // The pipeline handles this in the post-deployment step.
 module eventGrid 'modules/event-grid.bicep' = if (enableAutoBudget) {
-  name: 'deploy-event-grid'
+  name: 'deploy-event-grid-${location}'
   params: {
     logicAppCallbackUrl: 'https://placeholder-configure-post-deploy'
   }
