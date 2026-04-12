@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "16035821454868492510"
+      "templateHash": "3317326342601895751"
     }
   },
   "parameters": {
@@ -959,6 +959,356 @@
         }
       },
       "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-log-analytics",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "workspaceName": {
+            "value": "law-finops-budget"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "4929194845419963222"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "workspaceName": {
+              "type": "string",
+              "defaultValue": "law-finops-budget"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "retentionInDays": {
+              "type": "int",
+              "defaultValue": 30,
+              "metadata": {
+                "description": "Retention in days (30 = free tier)"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2023-09-01",
+              "name": "[parameters('workspaceName')]",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('finops-component', 'analytics-workspace'))]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": "[parameters('retentionInDays')]",
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+              }
+            }
+          ],
+          "outputs": {
+            "workspaceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
+            },
+            "workspaceName": {
+              "type": "string",
+              "value": "[parameters('workspaceName')]"
+            },
+            "customerId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName')), '2023-09-01').customerId]"
+            },
+            "primarySharedKey": {
+              "type": "string",
+              "value": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName')), '2023-09-01').primarySharedKey]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-alert-rules",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "workspaceId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-log-analytics'), '2022-09-01').outputs.workspaceId.value]"
+          },
+          "actionGroupId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-action-group'), '2022-09-01').outputs.actionGroupId.value]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "10537606388125951839"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "workspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace resource ID"
+              }
+            },
+            "actionGroupId": {
+              "type": "string",
+              "metadata": {
+                "description": "Action Group resource ID for alert routing"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/scheduledQueryRules",
+              "apiVersion": "2023-03-15-preview",
+              "name": "finops-alert-headup",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('finops-component', 'alert-headup'))]",
+              "properties": {
+                "displayName": "FinOps HeadUp — RGs at 60%+ budget utilization",
+                "description": "Resource groups where amortized spend has reached 60% of budget. Early awareness for FinOps team.",
+                "severity": 3,
+                "enabled": true,
+                "evaluationFrequency": "PT1H",
+                "windowSize": "PT1H",
+                "scopes": [
+                  "[parameters('workspaceId')]"
+                ],
+                "criteria": {
+                  "allOf": [
+                    {
+                      "query": "            FinOpsInventory_CL\r\n            | where actualPct_d >= 60 and actualPct_d < 80\r\n            | where complianceStatus_s != \"critical\"\r\n            | project resourceGroup_s, actualPct_d, forecastPct_d, amortizedMTD_d, technicalBudget_d, complianceStatus_s, TimeGenerated\r\n            | order by actualPct_d desc\r\n          ",
+                      "timeAggregation": "Count",
+                      "operator": "GreaterThan",
+                      "threshold": 0,
+                      "failingPeriods": {
+                        "numberOfEvaluationPeriods": 1,
+                        "minFailingPeriodsToAlert": 1
+                      }
+                    }
+                  ]
+                },
+                "actions": {
+                  "actionGroups": [
+                    "[parameters('actionGroupId')]"
+                  ]
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Insights/scheduledQueryRules",
+              "apiVersion": "2023-03-15-preview",
+              "name": "finops-alert-warning",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('finops-component', 'alert-warning'))]",
+              "properties": {
+                "displayName": "FinOps Warning — RGs at 80%+ budget utilization",
+                "description": "Resource groups where amortized spend has reached 80% of budget. Action needed to prevent overspend.",
+                "severity": 2,
+                "enabled": true,
+                "evaluationFrequency": "PT1H",
+                "windowSize": "PT1H",
+                "scopes": [
+                  "[parameters('workspaceId')]"
+                ],
+                "criteria": {
+                  "allOf": [
+                    {
+                      "query": "            FinOpsInventory_CL\r\n            | where actualPct_d >= 80 and actualPct_d < 95\r\n            | project resourceGroup_s, actualPct_d, forecastPct_d, amortizedMTD_d, technicalBudget_d, complianceStatus_s, TimeGenerated\r\n            | order by actualPct_d desc\r\n          ",
+                      "timeAggregation": "Count",
+                      "operator": "GreaterThan",
+                      "threshold": 0,
+                      "failingPeriods": {
+                        "numberOfEvaluationPeriods": 1,
+                        "minFailingPeriodsToAlert": 1
+                      }
+                    }
+                  ]
+                },
+                "actions": {
+                  "actionGroups": [
+                    "[parameters('actionGroupId')]"
+                  ]
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Insights/scheduledQueryRules",
+              "apiVersion": "2023-03-15-preview",
+              "name": "finops-alert-critical",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('finops-component', 'alert-critical'))]",
+              "properties": {
+                "displayName": "FinOps Critical — RGs at 95%+ budget utilization",
+                "description": "Resource groups where amortized spend has reached 95% of budget. Immediate action required.",
+                "severity": 1,
+                "enabled": true,
+                "evaluationFrequency": "PT1H",
+                "windowSize": "PT1H",
+                "scopes": [
+                  "[parameters('workspaceId')]"
+                ],
+                "criteria": {
+                  "allOf": [
+                    {
+                      "query": "            FinOpsInventory_CL\r\n            | where actualPct_d >= 95\r\n            | project resourceGroup_s, actualPct_d, forecastPct_d, amortizedMTD_d, technicalBudget_d, complianceStatus_s, TimeGenerated\r\n            | order by actualPct_d desc\r\n          ",
+                      "timeAggregation": "Count",
+                      "operator": "GreaterThan",
+                      "threshold": 0,
+                      "failingPeriods": {
+                        "numberOfEvaluationPeriods": 1,
+                        "minFailingPeriodsToAlert": 1
+                      }
+                    }
+                  ]
+                },
+                "actions": {
+                  "actionGroups": [
+                    "[parameters('actionGroupId')]"
+                  ]
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "alertHeadUpId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/scheduledQueryRules', 'finops-alert-headup')]"
+            },
+            "alertWarningId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/scheduledQueryRules', 'finops-alert-warning')]"
+            },
+            "alertCriticalId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/scheduledQueryRules', 'finops-alert-critical')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-action-group')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-log-analytics')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-workbook",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "inventoryApiUrl": "[if(parameters('enableAmortizedPipeline'), createObject('value', format('https://{0}/api/inventory', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app'), '2022-09-01').outputs.defaultHostName.value)), createObject('value', ''))]",
+          "varianceApiUrl": "[if(parameters('enableAmortizedPipeline'), createObject('value', format('https://{0}/api/variance', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app'), '2022-09-01').outputs.defaultHostName.value)), createObject('value', ''))]"
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "workbookName": {
+              "type": "string",
+              "defaultValue": "FinOps Budget Compliance Dashboard"
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "eastus"
+            },
+            "inventoryApiUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "URL to the /api/inventory Function endpoint with code"
+              }
+            },
+            "varianceApiUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "URL to the /api/variance Function endpoint with code"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/workbooks",
+              "apiVersion": "2022-04-01",
+              "name": "[guid('finops-budget-dashboard')]",
+              "location": "[parameters('location')]",
+              "kind": "shared",
+              "properties": {
+                "displayName": "[parameters('workbookName')]",
+                "category": "FinOps",
+                "sourceId": "Azure Monitor",
+                "serializedData": "[concat('{\"version\":\"Notebook/1.0\",\"items\":[{\"type\":1,\"content\":{\"json\":\"# FinOps Budget Compliance Dashboard\\n> Real-time view of all resource group budgets, amortized spend, and compliance status from the FinOps Inventory (Cosmos DB)\\n\\n---\"},\"name\":\"title\"},{\"type\":1,\"content\":{\"json\":\"## How to Use\\n1. Open this workbook in the Azure Portal\\n2. Data comes from the FinOps Inventory Engine (Azure Function + Cosmos DB)\\n3. Refresh to see latest evaluation results\\n\\n### API Endpoints (for Power BI or custom integrations)\\n- **Full Inventory:** `', parameters('inventoryApiUrl'), '`\\n- **Finance vs Technical Variance:** `', parameters('varianceApiUrl'), '`\\n\\n---\"},\"name\":\"instructions\"},{\"type\":1,\"content\":{\"json\":\"## Quick Links\\n- [Cost Management Budgets](https://portal.azure.com/#view/Microsoft_Azure_CostManagement/Menu/~/budgets) - Native budgets\\n- [Policy Compliance](https://portal.azure.com/#view/Microsoft_Azure_Policy/PolicyMenuBlade/~/Compliance) - RGs without budgets\"},\"name\":\"links\"}],\"isLocked\":false}')]"
+              },
+              "tags": {
+                "finops-platform": "budget-alerts-automation",
+                "managed-by": "microsoft-csa"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app')]",
         "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
       ]
     },
@@ -2014,6 +2364,15 @@
           "cosmosAccountId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db'), '2022-09-01').outputs.cosmosAccountId.value]"
           },
+          "lawCustomerId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-log-analytics'), '2022-09-01').outputs.customerId.value]"
+          },
+          "lawSharedKey": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-log-analytics'), '2022-09-01').outputs.primarySharedKey.value]"
+          },
+          "logAnalyticsWorkspaceId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-log-analytics'), '2022-09-01').outputs.workspaceId.value]"
+          },
           "teamsWebhookUri": {
             "value": "[parameters('teamsWebhookUri')]"
           },
@@ -2034,7 +2393,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "7298859306379436343"
+              "templateHash": "3245271401613382875"
             }
           },
           "parameters": {
@@ -2083,6 +2442,20 @@
               "defaultValue": true,
               "metadata": {
                 "description": "Set to false if deployer lacks User Access Administrator role"
+              }
+            },
+            "lawCustomerId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Log Analytics workspace customer ID (for _sync_to_law)"
+              }
+            },
+            "lawSharedKey": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Log Analytics workspace shared key (for _sync_to_law)"
               }
             },
             "cosmosAccountName": {
@@ -2197,6 +2570,14 @@
                       "value": "50,75,90,100,110"
                     },
                     {
+                      "name": "LAW_WORKSPACE_ID",
+                      "value": "[parameters('lawCustomerId')]"
+                    },
+                    {
+                      "name": "LAW_SHARED_KEY",
+                      "value": "[parameters('lawSharedKey')]"
+                    },
+                    {
                       "name": "WEBSITE_RUN_FROM_PACKAGE",
                       "value": "[parameters('packageUri')]"
                     },
@@ -2308,6 +2689,7 @@
       },
       "dependsOn": [
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-log-analytics')]",
         "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-storage-account')]"
       ]

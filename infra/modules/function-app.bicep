@@ -21,6 +21,13 @@ param packageUri string = 'https://raw.githubusercontent.com/gitpavleenbali/azur
 @description('Set to false if deployer lacks User Access Administrator role')
 param enableRbacAssignment bool = true
 
+@description('Log Analytics workspace customer ID (for _sync_to_law)')
+param lawCustomerId string = ''
+
+@description('Log Analytics workspace shared key (for _sync_to_law)')
+@secure()
+param lawSharedKey string = ''
+
 @description('Cosmos DB account name (for data plane role assignment)')
 param cosmosAccountName string = ''
 
@@ -67,6 +74,8 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'TEAMS_WEBHOOK_URL', value: teamsWebhookUri }
         { name: 'FINOPS_EMAIL', value: finopsEmail }
         { name: 'ALERT_THRESHOLDS', value: '50,75,90,100,110' }
+        { name: 'LAW_WORKSPACE_ID', value: lawCustomerId }
+        { name: 'LAW_SHARED_KEY', value: lawSharedKey }
         { name: 'WEBSITE_RUN_FROM_PACKAGE', value: packageUri }
         { name: 'SCM_DO_BUILD_DURING_DEPLOYMENT', value: 'true' }
         { name: 'ENABLE_ORYX_BUILD', value: 'true' }

@@ -185,6 +185,40 @@ module cosmosDb 'modules/cosmos-db.bicep' = {
   }
 }
 
+// ── Module 5c: Log Analytics Workspace ───────────────────────
+module logAnalytics 'modules/log-analytics.bicep' = {
+  name: 'deploy-log-analytics'
+  scope: rg
+  params: {
+    location: location
+    workspaceName: 'law-finops-budget'
+    tags: tags
+  }
+}
+
+// ── Module 5d: Scheduled Query Alert Rules ───────────────────
+module alertRules 'modules/alert-rules.bicep' = {
+  name: 'deploy-alert-rules'
+  scope: rg
+  params: {
+    location: location
+    workspaceId: logAnalytics.outputs.workspaceId
+    actionGroupId: actionGroup.outputs.actionGroupId
+    tags: tags
+  }
+}
+
+// ── Module 5e: Azure Workbook Dashboard ──────────────────────
+module workbook 'modules/workbook.json' = {
+  name: 'deploy-workbook'
+  scope: rg
+  params: {
+    location: location
+    inventoryApiUrl: enableAmortizedPipeline ? 'https://${functionApp.outputs.defaultHostName}/api/inventory' : ''
+    varianceApiUrl: enableAmortizedPipeline ? 'https://${functionApp.outputs.defaultHostName}/api/variance' : ''
+  }
+}
+
 // ── Module 6: Auto-Budget Logic App (MT-01) ──────────────────
 module autoBudgetLogicApp 'modules/logic-app-auto-budget.bicep' = if (enableAutoBudget) {
   name: 'deploy-auto-budget-logic-app'
@@ -261,6 +295,9 @@ module functionApp 'modules/function-app.bicep' = if (enableAmortizedPipeline) {
     cosmosContainerName: cosmosDb.outputs.cosmosContainerName
     cosmosAccountName: cosmosDb.outputs.cosmosAccountName
     cosmosAccountId: cosmosDb.outputs.cosmosAccountId
+    lawCustomerId: logAnalytics.outputs.customerId
+    lawSharedKey: logAnalytics.outputs.primarySharedKey
+    logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
     teamsWebhookUri: teamsWebhookUri
     finopsEmail: finopsEmail
     tags: tags
