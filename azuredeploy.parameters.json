@@ -1,52 +1,35 @@
 {
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
-  "metadata": {
-    "_generator": {
-      "name": "bicep",
-      "templateHash": "azuredeploy-parameters"
-    }
-  },
   "parameters": {
     "environment": {
-      "type": "string",
-      "defaultValue": "dev"
+      "value": "dev"
     },
     "location": {
-      "type": "string",
-      "defaultValue": "westeurope"
+      "value": "westeurope"
     },
     "finopsEmail": {
-      "type": "string",
-      "defaultValue": "GEN-EMAIL"
+      "value": "GEN-EMAIL"
     },
     "subscriptionBudgetAmount": {
-      "type": "int",
-      "defaultValue": 10000
+      "value": 10000
     },
     "defaultBudgetAmount": {
-      "type": "int",
-      "defaultValue": 100
+      "value": 100
     },
     "enableAmortizedPipeline": {
-      "type": "bool",
-      "defaultValue": false
+      "value": false
     },
     "enableAutoBudget": {
-      "type": "bool",
-      "defaultValue": true
+      "value": true
     },
     "enableSelfServiceChange": {
-      "type": "bool",
-      "defaultValue": true
+      "value": true
     },
     "enablePolicy": {
-      "type": "bool",
-      "defaultValue": true
+      "value": true
     },
     "enableRbacAssignment": {
-      "type": "bool",
-      "defaultValue": true
+      "value": true
     }
   }
 }
