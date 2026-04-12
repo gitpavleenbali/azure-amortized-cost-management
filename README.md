@@ -188,15 +188,18 @@ No local tools required — just an Azure subscription with the RBAC roles below
 
 ### Resource Providers
 
-Register these before deploying (the pipeline handles this automatically):
+The following resource providers must be registered on your subscription. The deployment will auto-register them, but if your subscription has restrictions, register manually:
 
 ```bash
 az provider register --namespace Microsoft.Consumption
 az provider register --namespace Microsoft.CostManagement
-az provider register --namespace Microsoft.CostManagementExports
+az provider register --namespace Microsoft.DocumentDB
 az provider register --namespace Microsoft.EventGrid
 az provider register --namespace Microsoft.Logic
 az provider register --namespace Microsoft.Insights
+az provider register --namespace Microsoft.Web
+az provider register --namespace Microsoft.OperationalInsights
+az provider register --namespace Microsoft.ManagedIdentity
 ```
 
 ---
@@ -212,6 +215,42 @@ This platform is designed following the [Azure Well-Architected Framework](https
 | **Reliability** | Idempotent deployments, timer-triggered evaluation with manual fallback, backfill Logic App as safety net, Cosmos DB automatic backup |
 | **Security** | Managed Identity everywhere (no shared keys in code), RBAC least-privilege, secure parameters for secrets, audit policy for compliance |
 | **Performance Efficiency** | Serverless auto-scale, Cosmos DB partition key on subscriptionId for multi-sub, async blob processing, configurable exclusion filters |
+
+---
+
+## Troubleshooting — Common Deployment Issues
+
+If your deployment fails, check this table before troubleshooting further:
+
+| Issue | Error Message | Cause | Fix |
+|-------|--------------|-------|-----|
+| **Cosmos DB capacity** | "high demand for zonal redundant accounts" | Region capacity constraint (common in East US) | Deploy to a different region (West US 2, West Europe) |
+| **Cosmos DB stuck** | "terminal provisioning state 'Failed'" | Previous failed Cosmos account blocking redeploy | Delete the failed account: `az cosmosdb delete --name <name> -g <rg> --yes` |
+| **Budget start date** | "Start date of budgets cannot be updated" | Budget already exists with a different start date | Delete the existing budget: `az consumption budget delete --budget-name <name>` |
+| **Alert rules** | "Failed to resolve table FinOpsInventory_CL" | Custom log table doesn't exist yet at deploy time | Already handled via `skipQueryValidation: true` — redeploy if using old template version |
+| **Storage key policy** | "Key based authentication is not permitted" | Subscription policy blocks shared key access | Deployment uses a dedicated script storage account — if still blocked, check Azure Policy |
+| **Resource provider** | "ResourceProviderNotRegistered" | Required provider not registered on subscription | Run `az provider register --namespace <provider>` (see Prerequisites) |
+| **RBAC insufficient** | "Authorization failed" | Deployer lacks User Access Administrator role | Set `enableRbacAssignment = Disabled` in Feature Toggles, then assign roles manually |
+| **Function App empty** | Only 5 resources deployed | Feature Toggles were set to Disabled | Ensure all toggles show "Enabled" in the wizard (they default to Enabled) |
+| **Event Grid webhook** | "Webhook validation handshake failed" | Event Grid requires a valid endpoint URL | Already handled — post-deploy script wires the real Logic App URL |
+| **Naming collision** | "already taken" | Globally unique name conflict (Storage, Cosmos, Function App) | Use the Resource Naming tab to specify custom names |
+| **Post-deploy timeout** | Deployment script exceeded 30 minutes | Function App code build took too long | Redeploy — the Function App infrastructure is already created; post-deploy will retry |
+
+### Identity & Access Management (IAM)
+
+This solution uses **Managed Identity** (zero shared keys) with 11 RBAC role assignments:
+
+| Identity | Roles | How It's Set |
+|----------|-------|-------------|
+| Function App (System MSI) | Storage Blob/Queue/Table Owner, Cosmos DB SQL Data Contributor, Log Analytics Contributor, Cost Management Reader | Automatic via Bicep (when `enableRbacAssignment = Enabled`) |
+| Auto-Budget Logic App (System MSI) | Cost Management Contributor (subscription scope) | Automatic via Bicep |
+| Budget Change Logic App (System MSI) | Cost Management Contributor (subscription scope) | Automatic via Bicep |
+| Backfill Logic App (System MSI) | Reader (subscription scope) | Automatic via Bicep |
+| Post-Deploy Identity (User MSI) | Contributor (RG), Cost Management Contributor (subscription) | Automatic via Bicep |
+
+**If your organisation requires manual RBAC approval**: set `enableRbacAssignment = Disabled` during deployment, then assign the roles listed above through your ITSM/approval workflow.
+
+**Log Analytics authentication note**: The `_sync_to_law()` function uses the HTTP Data Collector API which requires a shared key (Azure platform limitation — Managed Identity not yet supported for this API). The key is passed securely via `@secure()` Bicep parameter and stored in Function App app settings. Microsoft is migrating to the [Logs Ingestion API](https://learn.microsoft.com/azure/azure-monitor/logs/logs-ingestion-api-overview) which supports Managed Identity — this will be adopted in a future version.
 
 ---
 

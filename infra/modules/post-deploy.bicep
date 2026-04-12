@@ -90,8 +90,16 @@ resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
       echo "Storage: $STORAGE_ACCOUNT_NAME"
       echo ""
 
+      # ── Step 0: Ensure resource providers are registered ──
+      echo "[0/7] Registering resource providers..."
+      for provider in Microsoft.CostManagement Microsoft.Consumption Microsoft.DocumentDB Microsoft.EventGrid Microsoft.Logic Microsoft.Insights Microsoft.Web Microsoft.OperationalInsights Microsoft.ManagedIdentity; do
+        az provider register --namespace "$provider" --wait false --output none 2>/dev/null || true
+      done
+      echo "  Resource providers registration initiated"
+      echo ""
+
       # ── Step 1: Create amortized cost export ──────────────
-      echo "[1/4] Creating daily amortized cost export..."
+      echo "[1/7] Creating daily amortized cost export..."
       START_DATE=$(date -u +"%Y-%m-01T00:00:00")
       END_DATE=$(date -u -d "+1 year" +"%Y-12-31T00:00:00" 2>/dev/null || date -u -v+1y +"%Y-12-31T00:00:00")
 
