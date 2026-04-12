@@ -87,7 +87,7 @@ One deployment gives you the full FinOps cost governance stack:
   <img src="docs/ecosystem-diagram.svg" alt="Azure Amortized Cost Management — Ecosystem Architecture" width="100%" />
 </p>
 
-**9 Function App endpoints** | **3 Logic Apps** | **3 Scheduled Query Rules** | **17 deployed resources**
+**9 Function App endpoints** | **3 Logic Apps** | **3 Scheduled Query Rules** | **20+ deployed resources** | **20 Bicep modules**
 
 See [Architecture Guide](docs/technical-guide.md) for the full 6-stage data flow with diagrams.
 
@@ -289,15 +289,23 @@ azure-amortized-cost-management/
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `environment` | `dev` | `dev` / `staging` / `prod` |
-| `location` | `westeurope` | Azure region |
-| `finopsEmail` | *(required)* | FinOps team email for alerts |
-| `defaultBudgetAmount` | `100` | Default EUR budget for new RGs |
-| `subscriptionBudgetAmount` | `10000` | Monthly subscription budget (EUR) |
-| `enableAmortizedPipeline` | `false` | Enable after cost export has 1 week of data |
-| `enableAutoBudget` | `true` | Auto EUR 100 on new RG creation |
-| `enableSelfServiceChange` | `true` | Enable self-service budget change Logic App |
-| `enablePolicy` | `true` | Deploy audit policy for RGs without budgets |
+| `environment` | `dev` | Environment name (2-10 chars, e.g. dev, staging, prod, uat, sandbox) |
+| `location` | `westeurope` | Azure region for all resources |
+| `finopsEmail` | *(required)* | FinOps team email(s) — comma-separated for multiple recipients |
+| `defaultBudgetAmount` | `100` | Default budget for new RGs (auto-budget Logic App) |
+| `subscriptionBudgetAmount` | `10000` | Monthly subscription-level budget |
+| `costTrackingScope` | `both` | `resourceGroup` (per-RG only), `subscription` (sub-level only), or `both` |
+| `enableAmortizedPipeline` | `true` | Deploy Function App, LAW, Alert Rules, Workbook |
+| `enableAutoBudget` | `true` | Auto-assign budget on new RG creation |
+| `enableSelfServiceChange` | `true` | Self-service budget change HTTP endpoint |
+| `enablePolicy` | `true` | Audit policy for RGs without budgets |
+| `enableRbacAssignment` | `true` | Auto-assign RBAC to managed identities |
+| `enablePrivateNetworking` | `false` | VNet + private endpoints for Cosmos/Storage |
+| `budgetStartDate` | `2026-04-01` | Budget period start date (cannot change after creation) |
+
+### Resource Naming
+
+All resources use [Cloud Adoption Framework](https://learn.microsoft.com/azure/cloud-adoption-framework/ready/azure-best-practices/resource-naming) defaults. Toggle **"Use custom resource names"** in the portal wizard to override any of the 14 resource names (Action Group, Cosmos DB, Storage, Function App, 3 Logic Apps, LAW, Workbook, 3 Alert Rules, Managed Identity, and Resource Group).
 
 ### Environment Variables (Function App)
 
