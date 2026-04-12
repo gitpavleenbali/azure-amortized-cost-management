@@ -1,0 +1,63 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "18199730571682221197"
+    }
+  },
+  "parameters": {
+    "logicAppCallbackUrl": {
+      "type": "string"
+    },
+    "eventSubscriptionName": {
+      "type": "string",
+      "defaultValue": "finops-rg-write-events"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.EventGrid/eventSubscriptions",
+      "apiVersion": "2024-06-01-preview",
+      "name": "[parameters('eventSubscriptionName')]",
+      "properties": {
+        "destination": {
+          "endpointType": "WebHook",
+          "properties": {
+            "endpointUrl": "[parameters('logicAppCallbackUrl')]"
+          }
+        },
+        "filter": {
+          "includedEventTypes": [
+            "Microsoft.Resources.ResourceWriteSuccess"
+          ],
+          "advancedFilters": [
+            {
+              "operatorType": "StringContains",
+              "key": "subject",
+              "values": [
+                "/resourceGroups/"
+              ]
+            },
+            {
+              "operatorType": "StringNotContains",
+              "key": "subject",
+              "values": [
+                "/providers/"
+              ]
+            }
+          ]
+        },
+        "eventDeliverySchema": "EventGridSchema"
+      }
+    }
+  ],
+  "outputs": {
+    "eventSubscriptionId": {
+      "type": "string",
+      "value": "[subscriptionResourceId('Microsoft.EventGrid/eventSubscriptions', parameters('eventSubscriptionName'))]"
+    }
+  }
+}

@@ -1,0 +1,140 @@
+# ============================================================
+# FinOps Budget Alerts Automation — Azure DevOps CI/CD Pipeline
+# ============================================================
+# Triggers on push to main/dev branches.
+# Stages: Validate → Deploy Infra → Deploy Function → Test
+# Environments: dev (auto) → staging (manual approval) → prod (FinOps lead approval)
+# ============================================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - dev
+  paths:
+    include:
+      - code-base/budget-alerts-automation/**
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - code-base/budget-alerts-automation/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - name: workingDirectory
+    value: 'code-base/budget-alerts-automation'
+  - name: azureServiceConnection
+    value: 'finops-service-connection'  # Configure in Azure DevOps
+  - name: subscriptionId
+    value: '<YOUR_SUBSCRIPTION_ID>'
+  - name: resourceGroupName
+    value: 'rg-finops-governance-dev'
+  - name: functionAppName
+    value: 'func-finops-amortized'  # Updated after Function App deployment
+  - name: location
+    value: 'eastus'
+  - name: environment
+    value: 'dev'
+
+stages:
+  # ── Stage 1: Validate ──────────────────────────────────────
+  - stage: Validate
+    displayName: 'Validate Bicep & Lint'
+    jobs:
+      - job: BicepValidation
+        displayName: 'Bicep Build + Lint'
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Bicep Build (compile check)'
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az bicep build --file $(workingDirectory)/infra/main.bicep
+                echo "✓ Bicep compilation successful"
+
+          - task: AzureCLI@2
+            displayName: 'What-If Preview (dev)'
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az deployment sub what-if \
+                  --location eastus \
+                  --template-file $(workingDirectory)/infra/main.bicep \
+                  --parameters $(workingDirectory)/parameters/dev.bicepparam \
+                  --result-format FullResourcePayloads
+
+  # ── Stage 2: Deploy Dev ─────────────────────────────────────
+  - stage: DeployDev
+    displayName: 'Deploy to Dev'
+    dependsOn: Validate
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/dev'))
+    jobs:
+      - deployment: DeployInfra
+        displayName: 'Deploy Infrastructure (Dev)'
+        environment: 'finops-dev'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: AzureCLI@2
+                  displayName: 'Deploy Bicep Modules'
+                  inputs:
+                    azureSubscription: $(azureServiceConnection)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az deployment sub create \
+                        --location eastus \
+                        --template-file $(workingDirectory)/infra/main.bicep \
+                        --parameters $(workingDirectory)/parameters/dev.bicepparam \
+                        --name "finops-budget-$(Build.BuildNumber)"
+
+                - task: AzureCLI@2
+                  displayName: 'Run Budget Backfill (Top 20)'
+                  inputs:
+                    azureSubscription: $(azureServiceConnection)
+                    scriptType: pscore
+                    scriptLocation: scriptPath
+                    scriptPath: $(workingDirectory)/scripts/Invoke-BudgetBackfill.ps1
+                    arguments: '-Top 20 -ConfigPath $(workingDirectory)/scripts/config.json'
+
+  # ── Stage 3: Deploy Function App ─────────────────────────────
+  - stage: DeployFunction
+    displayName: 'Deploy Azure Function'
+    dependsOn: DeployDev
+    condition: succeeded()
+    jobs:
+      - job: PublishFunction
+        displayName: 'Publish Amortized Budget Engine'
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.11'
+
+          - script: |
+              cd $(workingDirectory)/functions/amortized-budget-engine
+              pip install -r requirements.txt
+            displayName: 'Install Python dependencies'
+
+          - task: AzureCLI@2
+            displayName: 'Deploy Function App (Remote Build)'
+            inputs:
+              azureSubscription: $(azureServiceConnection)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                npm install -g azure-functions-core-tools@4 --unsafe-perm true
+                cd $(workingDirectory)/functions/amortized-budget-engine
+                func azure functionapp publish $(functionAppName) --python

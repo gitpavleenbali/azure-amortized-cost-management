@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "17685903338165919547"
+    }
+  },
+  "parameters": {
+    "policyDefinitionId": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Authorization/policyAssignments",
+      "apiVersion": "2022-06-01",
+      "name": "[format('finops-audit-rg-budgets-{0}', parameters('environment'))]",
+      "properties": {
+        "displayName": "[format('FinOps: Audit RGs Without Budget ({0})', parameters('environment'))]",
+        "policyDefinitionId": "[parameters('policyDefinitionId')]",
+        "enforcementMode": "Default",
+        "metadata": {
+          "category": "FinOps",
+          "environment": "[parameters('environment')]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "assignmentId": {
+      "type": "string",
+      "value": "[subscriptionResourceId('Microsoft.Authorization/policyAssignments', format('finops-audit-rg-budgets-{0}', parameters('environment')))]"
+    }
+  }
+}

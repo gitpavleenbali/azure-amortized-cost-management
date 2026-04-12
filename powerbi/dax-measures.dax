@@ -1,0 +1,88 @@
+// FinOps DAX Measures — Paste in Power BI Model View
+// ═══════════════════════════════════════════════════════════════
+
+// ── KPI Cards ─────────────────────────────────────────────────
+
+Total Technical Budget = SUM(FinOps_Inventory[technicalBudget])
+
+Total Finance Budget = SUM(FinOps_Inventory[financeBudget])
+
+Total Amortized Spend = SUM(FinOps_Inventory[amortizedMTD])
+
+Total Forecast EOM = SUM(FinOps_Inventory[forecastEOM])
+
+// ── Rates ─────────────────────────────────────────────────────
+
+Overall Burn Rate = 
+    DIVIDE(
+        [Total Amortized Spend],
+        [Total Technical Budget],
+        0
+    )
+
+Budget Utilization % = 
+    FORMAT(
+        DIVIDE([Total Amortized Spend], [Total Technical Budget], 0),
+        "0.0%"
+    )
+
+// ── Compliance ────────────────────────────────────────────────
+
+RGs On Track = 
+    COUNTROWS(
+        FILTER(FinOps_Inventory, FinOps_Inventory[complianceStatus] = "on_track")
+    )
+
+RGs At Risk = 
+    COUNTROWS(
+        FILTER(FinOps_Inventory, FinOps_Inventory[complianceStatus] = "at_risk")
+    )
+
+RGs Over Budget = 
+    COUNTROWS(
+        FILTER(FinOps_Inventory, FinOps_Inventory[complianceStatus] = "over_budget")
+    )
+
+Compliance Rate = 
+    DIVIDE(
+        [RGs On Track],
+        COUNTROWS(FinOps_Inventory),
+        0
+    )
+
+// ── Finance vs Technical ──────────────────────────────────────
+
+Finance Gap = [Total Finance Budget] - [Total Technical Budget]
+
+Under-Budgeted RGs = 
+    COUNTROWS(
+        FILTER(
+            FinOps_Inventory,
+            FinOps_Inventory[financeBudget] > 0 &&
+            FinOps_Inventory[technicalBudget] < FinOps_Inventory[financeBudget]
+        )
+    )
+
+// ── Forecast ──────────────────────────────────────────────────
+
+Projected Overrun = 
+    SUMX(
+        FILTER(FinOps_Inventory, FinOps_Inventory[forecastEOM] > FinOps_Inventory[technicalBudget]),
+        FinOps_Inventory[forecastEOM] - FinOps_Inventory[technicalBudget]
+    )
+
+RGs Projected Over = 
+    COUNTROWS(
+        FILTER(FinOps_Inventory, FinOps_Inventory[forecastPct] > 100)
+    )
+
+// ── Conditional Formatting ────────────────────────────────────
+
+Status Color = 
+    SWITCH(
+        SELECTEDVALUE(FinOps_Inventory[complianceStatus]),
+        "on_track", "#2ECC71",
+        "at_risk", "#F39C12",
+        "over_budget", "#E74C3C",
+        "#95A5A6"
+    )

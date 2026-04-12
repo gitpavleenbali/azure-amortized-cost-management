@@ -1,0 +1,286 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "15783089834367630473"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string"
+    },
+    "logicAppName": {
+      "type": "string",
+      "defaultValue": "la-finops-auto-budget"
+    },
+    "finopsEmail": {
+      "type": "string"
+    },
+    "defaultBudgetAmount": {
+      "type": "int",
+      "defaultValue": 100
+    },
+    "teamsWebhookUri": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {}
+    },
+    "enableRbacAssignment": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Set to false if deployer lacks User Access Administrator role"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2019-05-01",
+      "name": "[parameters('logicAppName')]",
+      "location": "[parameters('location')]",
+      "tags": "[union(parameters('tags'), createObject('finops-component', 'auto-budget'))]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "state": "Enabled",
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "finopsEmail": {
+              "type": "String",
+              "defaultValue": "[parameters('finopsEmail')]"
+            },
+            "defaultBudgetAmount": {
+              "type": "Int",
+              "defaultValue": "[parameters('defaultBudgetAmount')]"
+            },
+            "teamsWebhookUri": {
+              "type": "SecureString",
+              "defaultValue": "[parameters('teamsWebhookUri')]"
+            }
+          },
+          "triggers": {
+            "manual": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "subject": {
+                      "type": "string"
+                    },
+                    "eventType": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "resourceUri": {
+                          "type": "string"
+                        },
+                        "subscriptionId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "actions": {
+            "Parse_Event": {
+              "type": "ParseJson",
+              "inputs": {
+                "content": "@if(equals(string(triggerBody()?['subject']), ''), triggerBody()[0], triggerBody())",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "subject": {
+                      "type": "string"
+                    },
+                    "eventType": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "resourceUri": {
+                          "type": "string"
+                        },
+                        "subscriptionId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "runAfter": {}
+            },
+            "Extract_RG_Name": {
+              "type": "Compose",
+              "inputs": "@last(split(body('Parse_Event')?['subject'], '/'))",
+              "runAfter": {
+                "Parse_Event": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Extract_Sub_Id": {
+              "type": "Compose",
+              "inputs": "@split(body('Parse_Event')?['subject'], '/')[2]",
+              "runAfter": {
+                "Parse_Event": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Check_Budget_Exists": {
+              "type": "Http",
+              "inputs": {
+                "method": "GET",
+                "uri": "https://management.azure.com/subscriptions/@{outputs('Extract_Sub_Id')}/resourceGroups/@{outputs('Extract_RG_Name')}/providers/Microsoft.Consumption/budgets?api-version=2023-11-01",
+                "authentication": {
+                  "type": "ManagedServiceIdentity"
+                }
+              },
+              "runAfter": {
+                "Extract_RG_Name": [
+                  "Succeeded"
+                ],
+                "Extract_Sub_Id": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Create_If_Missing": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@length(body('Check_Budget_Exists')?['value'])",
+                      0
+                    ]
+                  }
+                ]
+              },
+              "runAfter": {
+                "Check_Budget_Exists": [
+                  "Succeeded"
+                ]
+              },
+              "actions": {
+                "Create_Budget": {
+                  "type": "Http",
+                  "inputs": {
+                    "method": "PUT",
+                    "uri": "https://management.azure.com/subscriptions/@{outputs('Extract_Sub_Id')}/resourceGroups/@{outputs('Extract_RG_Name')}/providers/Microsoft.Consumption/budgets/finops-rg-budget-@{outputs('Extract_RG_Name')}?api-version=2023-11-01",
+                    "authentication": {
+                      "type": "ManagedServiceIdentity"
+                    },
+                    "body": {
+                      "properties": {
+                        "category": "Cost",
+                        "amount": "@parameters('defaultBudgetAmount')",
+                        "timeGrain": "Monthly",
+                        "timePeriod": {
+                          "startDate": "@{formatDateTime(startOfMonth(utcNow()), 'yyyy-MM-ddTHH:mm:ssZ')}",
+                          "endDate": "2027-03-31T00:00:00Z"
+                        },
+                        "notifications": {
+                          "Forecasted_90": {
+                            "enabled": true,
+                            "operator": "GreaterThan",
+                            "threshold": 90,
+                            "thresholdType": "Forecasted",
+                            "contactEmails": [
+                              "@parameters('finopsEmail')"
+                            ]
+                          },
+                          "Actual_100": {
+                            "enabled": true,
+                            "operator": "GreaterThan",
+                            "threshold": 100,
+                            "thresholdType": "Actual",
+                            "contactEmails": [
+                              "@parameters('finopsEmail')"
+                            ]
+                          },
+                          "Forecasted_110": {
+                            "enabled": true,
+                            "operator": "GreaterThan",
+                            "threshold": 110,
+                            "thresholdType": "Forecasted",
+                            "contactEmails": [
+                              "@parameters('finopsEmail')"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {}
+                },
+                "Notify_Teams": {
+                  "type": "Http",
+                  "inputs": {
+                    "method": "POST",
+                    "uri": "@parameters('teamsWebhookUri')",
+                    "body": {
+                      "text": "**[FinOps Auto-Budget]** Budget EUR @{parameters('defaultBudgetAmount')} created for RG: **@{outputs('Extract_RG_Name')}**"
+                    }
+                  },
+                  "runAfter": {
+                    "Create_Budget": [
+                      "Succeeded"
+                    ]
+                  }
+                }
+              },
+              "else": {
+                "actions": {}
+              }
+            }
+          },
+          "outputs": {}
+        }
+      }
+    },
+    {
+      "condition": "[parameters('enableRbacAssignment')]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), 'CostManagementContributor')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '434105ed-43f6-45c7-a02f-909b2ba83430')]",
+        "principalId": "[reference(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), '2019-05-01', 'full').identity.principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "logicAppId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+    },
+    "principalId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), '2019-05-01', 'full').identity.principalId]"
+    }
+  }
+}

@@ -1,0 +1,171 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "3699488381678176377"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string"
+    },
+    "logicAppName": {
+      "type": "string",
+      "defaultValue": "la-finops-backfill"
+    },
+    "functionAppName": {
+      "type": "string"
+    },
+    "functionAppKey": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "subscriptionId": {
+      "type": "string",
+      "defaultValue": "[subscription().subscriptionId]"
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {}
+    },
+    "enableRbacAssignment": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Set to false if deployer lacks User Access Administrator role"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2019-05-01",
+      "name": "[parameters('logicAppName')]",
+      "location": "[parameters('location')]",
+      "tags": "[union(parameters('tags'), createObject('finops-component', 'backfill-scheduler'))]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "state": "Enabled",
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "parameters": {
+            "functionBaseUrl": {
+              "type": "String",
+              "defaultValue": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01').defaultHostName)]"
+            },
+            "functionKey": {
+              "type": "SecureString",
+              "defaultValue": "[parameters('functionAppKey')]"
+            },
+            "subscriptionId": {
+              "type": "String",
+              "defaultValue": "[parameters('subscriptionId')]"
+            }
+          },
+          "triggers": {
+            "Daily_Backfill": {
+              "type": "Recurrence",
+              "recurrence": {
+                "frequency": "Day",
+                "interval": 1,
+                "schedule": {
+                  "hours": [
+                    "7"
+                  ],
+                  "minutes": [
+                    30
+                  ]
+                },
+                "timeZone": "UTC"
+              }
+            }
+          },
+          "actions": {
+            "Scan_RGs": {
+              "type": "Http",
+              "inputs": {
+                "method": "GET",
+                "uri": "@{parameters('functionBaseUrl')}/api/backfill?subscriptionId=@{parameters('subscriptionId')}&dryRun=true&code=@{parameters('functionKey')}"
+              },
+              "runAfter": {}
+            },
+            "Check_Pending": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "greater": [
+                      "@body('Scan_RGs')?['processed']",
+                      0
+                    ]
+                  }
+                ]
+              },
+              "runAfter": {
+                "Scan_RGs": [
+                  "Succeeded"
+                ]
+              },
+              "actions": {
+                "Execute_Backfill": {
+                  "type": "Http",
+                  "inputs": {
+                    "method": "GET",
+                    "uri": "@{parameters('functionBaseUrl')}/api/backfill?subscriptionId=@{parameters('subscriptionId')}&dryRun=false&code=@{parameters('functionKey')}"
+                  },
+                  "runAfter": {}
+                },
+                "Log_Results": {
+                  "type": "Compose",
+                  "inputs": {
+                    "backfillCompleted": true,
+                    "processedCount": "@body('Execute_Backfill')?['processed']",
+                    "timestamp": "@utcNow()"
+                  },
+                  "runAfter": {
+                    "Execute_Backfill": [
+                      "Succeeded"
+                    ]
+                  }
+                }
+              },
+              "else": {
+                "actions": {
+                  "No_Action_Needed": {
+                    "type": "Compose",
+                    "inputs": {
+                      "message": "All RGs already have budgets — no backfill needed",
+                      "timestamp": "@utcNow()"
+                    },
+                    "runAfter": {}
+                  }
+                }
+              }
+            }
+          },
+          "outputs": {}
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "logicAppId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+    },
+    "logicAppName": {
+      "type": "string",
+      "value": "[parameters('logicAppName')]"
+    },
+    "principalId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), '2019-05-01', 'full').identity.principalId]"
+    }
+  }
+}

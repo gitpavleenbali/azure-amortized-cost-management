@@ -1,0 +1,74 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "4115552860985602913"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Authorization/policyDefinitions",
+      "apiVersion": "2021-06-01",
+      "name": "finops-audit-rg-without-budget",
+      "properties": {
+        "displayName": "FinOps: Audit Resource Groups Without Budget",
+        "description": "Flags resource groups that do not have a Microsoft.Consumption/budgets resource. FinOps baseline requirement for cost governance.",
+        "policyType": "Custom",
+        "mode": "All",
+        "metadata": {
+          "category": "FinOps",
+          "version": "1.0.0",
+          "environment": "[parameters('environment')]"
+        },
+        "parameters": {
+          "effect": {
+            "type": "String",
+            "metadata": {
+              "displayName": "Effect",
+              "description": "AuditIfNotExists flags non-compliance without blocking."
+            },
+            "allowedValues": [
+              "AuditIfNotExists",
+              "Disabled"
+            ],
+            "defaultValue": "AuditIfNotExists"
+          }
+        },
+        "policyRule": {
+          "if": {
+            "field": "type",
+            "equals": "Microsoft.Resources/subscriptions/resourceGroups"
+          },
+          "then": {
+            "effect": "[[parameters('effect')]",
+            "details": {
+              "type": "Microsoft.Consumption/budgets",
+              "existenceCondition": {
+                "field": "Microsoft.Consumption/budgets/amount",
+                "greater": 0
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "policyDefinitionId": {
+      "type": "string",
+      "value": "[subscriptionResourceId('Microsoft.Authorization/policyDefinitions', 'finops-audit-rg-without-budget')]"
+    },
+    "policyDefinitionName": {
+      "type": "string",
+      "value": "finops-audit-rg-without-budget"
+    }
+  }
+}

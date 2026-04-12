@@ -1,0 +1,121 @@
+{
+  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+  "type": "AdaptiveCard",
+  "version": "1.5",
+  "body": [
+    {
+      "type": "Container",
+      "style": "emphasis",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "💰 FinOps Budget Change Request",
+          "weight": "Bolder",
+          "size": "Large"
+        },
+        {
+          "type": "TextBlock",
+          "text": "Change the monthly budget for a resource group. Minimum EUR 100. Increases over 2x require BU lead approval.",
+          "wrap": true,
+          "size": "Small",
+          "isSubtle": true
+        }
+      ]
+    },
+    {
+      "type": "Container",
+      "items": [
+        {
+          "type": "TextBlock",
+          "text": "Subscription ID",
+          "weight": "Bolder",
+          "size": "Small"
+        },
+        {
+          "type": "Input.Text",
+          "id": "subscriptionId",
+          "placeholder": "e.g., 00000000-0000-0000-0000-000000000000",
+          "isRequired": true,
+          "errorMessage": "Subscription ID is required"
+        },
+        {
+          "type": "TextBlock",
+          "text": "Resource Group Name",
+          "weight": "Bolder",
+          "size": "Small",
+          "spacing": "Medium"
+        },
+        {
+          "type": "Input.Text",
+          "id": "resourceGroupName",
+          "placeholder": "e.g., rg-app-prod",
+          "isRequired": true,
+          "errorMessage": "Resource Group name is required"
+        },
+        {
+          "type": "TextBlock",
+          "text": "New Monthly Budget (EUR)",
+          "weight": "Bolder",
+          "size": "Small",
+          "spacing": "Medium"
+        },
+        {
+          "type": "Input.Number",
+          "id": "newBudgetAmount",
+          "placeholder": "Minimum 100",
+          "min": 100,
+          "max": 1000000,
+          "isRequired": true,
+          "errorMessage": "Budget must be at least EUR 100"
+        },
+        {
+          "type": "TextBlock",
+          "text": "Reason for Change",
+          "weight": "Bolder",
+          "size": "Small",
+          "spacing": "Medium"
+        },
+        {
+          "type": "Input.Text",
+          "id": "reason",
+          "placeholder": "e.g., New workload deployment requires higher budget",
+          "isMultiline": true,
+          "isRequired": true,
+          "errorMessage": "Please provide a reason"
+        },
+        {
+          "type": "TextBlock",
+          "text": "Your Email",
+          "weight": "Bolder",
+          "size": "Small",
+          "spacing": "Medium"
+        },
+        {
+          "type": "Input.Text",
+          "id": "requestorEmail",
+          "placeholder": "your.name@company.com",
+          "style": "Email",
+          "isRequired": true,
+          "errorMessage": "Email is required"
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Http",
+      "title": "Submit Budget Change",
+      "method": "POST",
+      "url": "{{LOGIC_APP_TRIGGER_URL}}",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" }
+      ],
+      "body": "{\"subscriptionId\":\"{{subscriptionId.value}}\",\"resourceGroupName\":\"{{resourceGroupName.value}}\",\"newBudgetAmount\":{{newBudgetAmount.value}},\"reason\":\"{{reason.value}}\",\"requestorEmail\":\"{{requestorEmail.value}}\"}",
+      "style": "positive"
+    }
+  ],
+  "metadata": {
+    "component": "finops-budget-change-form",
+    "version": "1.0.0"
+  }
+}

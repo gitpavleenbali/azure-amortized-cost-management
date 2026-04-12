@@ -1,0 +1,162 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "13481610797217475565"
+    }
+  },
+  "parameters": {
+    "budgetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Budget name"
+      }
+    },
+    "budgetAmount": {
+      "type": "int",
+      "metadata": {
+        "description": "Monthly budget amount in billing currency"
+      }
+    },
+    "scope": {
+      "type": "string",
+      "defaultValue": "subscription",
+      "allowedValues": [
+        "subscription",
+        "resourceGroup"
+      ],
+      "metadata": {
+        "description": "Scope: subscription or resourceGroup"
+      }
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Resource group name (required if scope is resourceGroup)"
+      }
+    },
+    "finopsEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "FinOps team email"
+      }
+    },
+    "ownerEmail": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "RG owner email (for per-threshold routing)"
+      }
+    },
+    "buLeadEmail": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "BU lead email (added at 75%+)"
+      }
+    },
+    "actionGroupId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Action Group resource ID"
+      }
+    },
+    "startDate": {
+      "type": "string",
+      "defaultValue": "[format('{0}-{1}-01T00:00:00Z', utcNow('yyyy'), utcNow('MM'))]",
+      "metadata": {
+        "description": "Budget start date"
+      }
+    },
+    "endDate": {
+      "type": "string",
+      "defaultValue": "2027-03-31T00:00:00Z",
+      "metadata": {
+        "description": "Budget end date"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {}
+    }
+  },
+  "variables": {
+    "ownerOnly": "[if(empty(parameters('ownerEmail')), createArray(parameters('finopsEmail')), createArray(parameters('ownerEmail')))]",
+    "ownerPlusBuLead": "[if(empty(parameters('buLeadEmail')), variables('ownerOnly'), concat(variables('ownerOnly'), createArray(parameters('buLeadEmail'))))]",
+    "allContacts": "[union(variables('ownerPlusBuLead'), createArray(parameters('finopsEmail')))]",
+    "actionGroupArray": "[if(empty(parameters('actionGroupId')), createArray(), createArray(parameters('actionGroupId')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Consumption/budgets",
+      "apiVersion": "2023-11-01",
+      "name": "[parameters('budgetName')]",
+      "properties": {
+        "category": "Cost",
+        "amount": "[parameters('budgetAmount')]",
+        "timeGrain": "Monthly",
+        "timePeriod": {
+          "startDate": "[parameters('startDate')]",
+          "endDate": "[parameters('endDate')]"
+        },
+        "notifications": {
+          "Actual_GreaterThan_50": {
+            "enabled": true,
+            "operator": "GreaterThan",
+            "threshold": 50,
+            "thresholdType": "Actual",
+            "contactEmails": "[variables('ownerOnly')]",
+            "contactGroups": []
+          },
+          "Actual_GreaterThan_75": {
+            "enabled": true,
+            "operator": "GreaterThan",
+            "threshold": 75,
+            "thresholdType": "Actual",
+            "contactEmails": "[variables('ownerPlusBuLead')]",
+            "contactGroups": "[variables('actionGroupArray')]"
+          },
+          "Forecasted_GreaterThan_90": {
+            "enabled": true,
+            "operator": "GreaterThan",
+            "threshold": 90,
+            "thresholdType": "Forecasted",
+            "contactEmails": "[variables('allContacts')]",
+            "contactGroups": "[variables('actionGroupArray')]"
+          },
+          "Actual_GreaterThan_100": {
+            "enabled": true,
+            "operator": "GreaterThan",
+            "threshold": 100,
+            "thresholdType": "Actual",
+            "contactEmails": "[variables('allContacts')]",
+            "contactGroups": "[variables('actionGroupArray')]"
+          },
+          "Forecasted_GreaterThan_110": {
+            "enabled": true,
+            "operator": "GreaterThan",
+            "threshold": 110,
+            "thresholdType": "Forecasted",
+            "contactEmails": "[variables('allContacts')]",
+            "contactGroups": "[variables('actionGroupArray')]"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "budgetId": {
+      "type": "string",
+      "value": "[subscriptionResourceId('Microsoft.Consumption/budgets', parameters('budgetName'))]"
+    },
+    "budgetName": {
+      "type": "string",
+      "value": "[parameters('budgetName')]"
+    }
+  }
+}

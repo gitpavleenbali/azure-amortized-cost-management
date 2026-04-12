@@ -1,0 +1,8 @@
+SubscriptionId,ResourceGroup,FinanceBudget,CostCenter
+00000000-0000-0000-0000-000000000000,rg-imaging-prod,18000,BU-Imaging
+00000000-0000-0000-0000-000000000000,rg-diagnostics-prod,10000,BU-Diagnostics
+00000000-0000-0000-0000-000000000000,rg-ai-research-dev,5000,BU-Research
+00000000-0000-0000-0000-000000000000,rg-ehr-platform-prod,22000,BU-Healthcare-IT
+00000000-0000-0000-0000-000000000000,rg-data-analytics-staging,3500,BU-Analytics
+00000000-0000-0000-0000-000000000000,rg-security-tools-prod,12000,BU-Security
+00000000-0000-0000-0000-000000000000,rg-backup-infra-prod,2500,BU-Infrastructure

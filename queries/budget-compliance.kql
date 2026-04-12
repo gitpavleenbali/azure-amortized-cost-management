@@ -1,0 +1,58 @@
+// FinOps Budget Compliance Queries — Azure Resource Graph
+// Feature: MT-04 + LT-05 | Framework: §12 + §13
+
+// ── QUERY 1: RGs Without Budgets ─────────────────────────────
+// Weekly compliance check
+resourcecontainers
+| where type == "microsoft.resources/subscriptions/resourcegroups"
+| project rgName=name, subscriptionId, location
+| join kind=leftanti (
+    resources
+    | where type == "microsoft.consumption/budgets"
+    | extend rgName = tostring(split(id, '/')[4])
+    | project rgName, subscriptionId
+) on rgName, subscriptionId
+| join kind=leftouter (
+    resourcecontainers | where type == "microsoft.resources/subscriptions" | project subscriptionId, subName=name
+) on subscriptionId
+| project subName, rgName, location
+| order by subName asc, rgName asc
+
+
+// ── QUERY 2: Budget Coverage KPI ─────────────────────────────
+resourcecontainers
+| where type == "microsoft.resources/subscriptions/resourcegroups"
+| summarize TotalRGs = count()
+| join kind=cross (
+    resources | where type == "microsoft.consumption/budgets" | extend rg=tostring(split(id,'/')[4]) | distinct rg | summarize Budgeted=count()
+)
+| extend Coverage = round(todouble(Budgeted)/todouble(TotalRGs)*100, 1)
+| extend Unbudgeted = TotalRGs - Budgeted
+| project TotalRGs, Budgeted, Unbudgeted, Coverage
+
+
+// ── QUERY 3: Spend vs Budget (Dashboard) ─────────────────────
+resources
+| where type == "microsoft.consumption/budgets"
+| extend rg = tostring(split(id, '/')[4])
+| extend budget = todouble(properties.amount)
+| extend spend = todouble(properties.currentSpend.amount)
+| extend variance = round(spend - budget, 2)
+| extend pct = round(spend / budget * 100, 1)
+| extend status = case(pct >= 110, "OVERRUN", pct >= 100, "BREACH", pct >= 90, "CRITICAL", pct >= 75, "WARNING", "OK")
+| join kind=leftouter (
+    resourcecontainers | where type == "microsoft.resources/subscriptions" | project subscriptionId, subName=name
+) on subscriptionId
+| project subName, rg, budget, spend, variance, pct, status
+| order by pct desc
+
+
+// ── QUERY 4: Top 10 Over Budget ──────────────────────────────
+resources
+| where type == "microsoft.consumption/budgets"
+| extend rg = tostring(split(id, '/')[4])
+| extend budget = todouble(properties.amount), spend = todouble(properties.currentSpend.amount)
+| where spend > budget
+| extend overBy = round(spend - budget, 2)
+| top 10 by overBy desc
+| project rg, budget, spend, overBy

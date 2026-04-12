@@ -1,0 +1,24 @@
+# Secrets
+**/local.settings.json
+**/*.env
+
+# Internal planning docs (not for public repo)
+docs/.internal/
+.internal/
+
+# Build artifacts
+**/.python_packages/
+**/__pycache__/
+*.pyc
+*.zip
+
+# Temp files
+C:\temp\
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "6645966421576733279"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "Global"
+    },
+    "actionGroupName": {
+      "type": "string",
+      "defaultValue": "ag-finops-budget-alerts"
+    },
+    "shortName": {
+      "type": "string",
+      "defaultValue": "FinOpsBgt"
+    },
+    "finopsEmail": {
+      "type": "string"
+    },
+    "teamsWebhookUri": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {}
+    }
+  },
+  "variables": {
+    "enableTeams": "[not(empty(parameters('teamsWebhookUri')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Insights/actionGroups",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('actionGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": {
+        "groupShortName": "[parameters('shortName')]",
+        "enabled": true,
+        "emailReceivers": [
+          {
+            "name": "finops-team",
+            "emailAddress": "[parameters('finopsEmail')]",
+            "useCommonAlertSchema": true
+          }
+        ],
+        "webhookReceivers": "[if(variables('enableTeams'), createArray(createObject('name', 'teams-finops-budget-alerts', 'serviceUri', parameters('teamsWebhookUri'), 'useCommonAlertSchema', true())), createArray())]",
+        "armRoleReceivers": [
+          {
+            "name": "subscription-contributors",
+            "roleId": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+            "useCommonAlertSchema": true
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+    "actionGroupId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName'))]"
+    },
+    "actionGroupName": {
+      "type": "string",
+      "value": "[parameters('actionGroupName')]"
+    }
+  }
+}
