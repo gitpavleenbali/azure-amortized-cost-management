@@ -97,60 +97,78 @@ See [Architecture Guide](docs/technical-guide.md) for the full 6-stage data flow
 
 ### Option A: One-Click Deploy (Recommended)
 
-1. Click **Deploy to Azure** above
-2. Fill in 4 parameters:
-   - **Email** — FinOps team email for alerts
-   - **Location** — Azure region (e.g., `westeurope`)
-   - **Environment** — `dev`, `staging`, or `prod`
-   - **Subscription Budget** — Monthly budget amount (EUR)
+No tools, no terminal, no scripts. Everything is automated.
+
+1. Click **Deploy to Azure** in the [Getting Started](#getting-started) section
+2. Walk through the **6-tab wizard**:
+   - **Basics** — Environment name, FinOps email
+   - **Budget Configuration** — Subscription + RG default budget amounts
+   - **Feature Toggles** — All default to Enabled
+   - **Networking** — Optional VNet + private endpoints
+   - **Resource Naming** — Override any resource name (or keep CAF defaults)
+   - **Advanced** — Resource group name, Teams webhook, tags
 3. Click **Review + Create**
 
-### Option B: CLI Deploy
+**What happens automatically:**
+- All resources deploy (~5 min): Function App, Cosmos DB, Log Analytics, 3 Logic Apps, 3 Alert Rules, Workbook, Storage, Action Group, Budget, Policy
+- Function App code auto-deploys from the GitHub zip package
+- Post-deploy script runs inside the deployment:
+  - Creates daily amortized cost export + triggers immediate run
+  - Triggers `/api/backfill` (scans all RGs → Cosmos DB)
+  - Triggers `/api/evaluate` (processes cost data → inventory)
+  - Syncs to Log Analytics → powers Workbook + Alert Rules
+- **Open the Workbook dashboard ~10 minutes after deployment completes**
+
+### Option B: Fork/Clone & CI/CD Deploy
+
+For teams who want to customise the solution or deploy via their own pipelines:
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/<ORG>/azure-amortized-cost-management.git
+# 1. Clone or use template
+git clone https://github.com/gitpavleenbali/azure-amortized-cost-management.git
 cd azure-amortized-cost-management
+# Or click "Use this template" on GitHub for a clean copy
 
-# 2. Edit parameters
+# 2. Edit parameters for your environment
 cp parameters/template.bicepparam parameters/my-env.bicepparam
 # Edit: set finopsEmail, location, subscriptionBudgetAmount
 
-# 3. Preview
+# 3. Preview what will be deployed
 az deployment sub create \
-  --location westeurope \
+  --location eastus \
   --template-file infra/main.bicep \
   --parameters parameters/my-env.bicepparam \
   --what-if
 
 # 4. Deploy
 az deployment sub create \
-  --location westeurope \
+  --location eastus \
   --template-file infra/main.bicep \
   --parameters parameters/my-env.bicepparam
 ```
 
-### Post-Deploy Setup (3 steps)
+> **No post-deploy scripts needed.** The deployment includes a post-deploy automation step that creates the cost export, deploys Function App code, and triggers the initial data pipeline. All RBAC role assignments are handled by the Bicep modules.
 
-```bash
-# 1. Create daily amortized cost export
-.\scripts\New-AmortizedExport.ps1 \
-  -StorageAccountName "<from deployment output>" \
-  -StorageAccountResourceGroup "rg-finops-governance-dev"
+### Documentation Index
 
-# 2. Deploy Function App code (after cost export has 1 week of data)
-cd functions/amortized-budget-engine
-func azure functionapp publish <functionAppName> --python
-
-# 3. RBAC assignment (requires Owner — run by subscription admin)
-.\scripts\Enable-AdminFeatures.ps1 \
-  -SubscriptionId "<your-sub-id>" \
-  -ResourceGroupName "rg-finops-governance-dev"
-```
+| Guide | Audience | What It Covers |
+|-------|----------|---------------|
+| [Architecture Guide](docs/technical-guide.md) | Architects, DevOps | 6-stage data flow, all 9 endpoints, Cosmos schema, Mermaid diagrams |
+| [Cost Forecast](docs/cost-forecast.md) | FinOps, Finance | Per-component pricing, ~$2.50/month breakdown |
+| [Naming Conventions](docs/naming-conventions.md) | DevOps, Platform | Resource naming patterns, tag schema, environment strategy |
+| [Contributing](CONTRIBUTING.md) | Developers | PR workflow, code standards, test requirements |
+| [Security](SECURITY.md) | Security, Compliance | Vulnerability reporting, secrets management, RBAC |
+| [Support](SUPPORT.md) | All | Issue templates, troubleshooting, support channels |
 
 ---
 
 ## Prerequisites
+
+### Option A: One-Click Deploy
+
+No local tools required — just an Azure subscription with the RBAC roles below.
+
+### Option B: Fork/Clone & CI/CD
 
 | Tool | Version | Install |
 |------|---------|---------|
@@ -158,7 +176,6 @@ func azure functionapp publish <functionAppName> --python
 | Bicep CLI | >= 0.28 | Bundled with Azure CLI |
 | PowerShell | >= 7.4 | `winget install Microsoft.PowerShell` |
 | Python | >= 3.11 | `winget install Python.Python.3.11` |
-| Azure Functions Core Tools | >= 4.x | `npm install -g azure-functions-core-tools@4` |
 
 ### RBAC Requirements
 
