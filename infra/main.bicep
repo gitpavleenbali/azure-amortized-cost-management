@@ -67,6 +67,47 @@ param functionAppKey string = ''
 @description('Budget start date (first of current month). Once a budget is created, the start date cannot be changed — delete and recreate instead.')
 param budgetStartDate string = '2026-04-01T00:00:00Z'
 
+// ── Naming Overrides ─────────────────────────────────────────
+@description('Custom name for the Action Group (leave blank for default: ag-finops-budget-alerts)')
+param actionGroupNameOverride string = ''
+
+@description('Custom name for the Cosmos DB account (leave blank for auto-generated unique name)')
+param cosmosAccountNameOverride string = ''
+
+@description('Custom name for the Storage Account (leave blank for auto-generated unique name)')
+param storageAccountNameOverride string = ''
+
+@description('Custom name for the Function App (leave blank for auto-generated unique name)')
+param functionAppNameOverride string = ''
+
+@description('Custom name for the Auto-Budget Logic App (leave blank for default: la-finops-auto-budget)')
+param logicAppAutoBudgetNameOverride string = ''
+
+@description('Custom name for the Budget Change Logic App (leave blank for default: la-finops-budget-change)')
+param logicAppBudgetChangeNameOverride string = ''
+
+@description('Custom name for the Backfill Logic App (leave blank for default: la-finops-backfill)')
+param logicAppBackfillNameOverride string = ''
+
+// ── Networking (v2) ──────────────────────────────────────────
+@description('Enable private networking — deploys VNet, private endpoints for Cosmos DB & Storage, and Function App VNet integration')
+param enablePrivateNetworking bool = false
+
+@description('VNet name (only used when enablePrivateNetworking = true)')
+param vnetName string = 'vnet-finops-governance'
+
+@description('VNet address space (only used when enablePrivateNetworking = true)')
+param vnetAddressPrefix string = '10.100.0.0/24'
+
+// ── Computed Names ───────────────────────────────────────────
+var actionGroupName = empty(actionGroupNameOverride) ? 'ag-finops-budget-alerts' : actionGroupNameOverride
+var cosmosAccountName = empty(cosmosAccountNameOverride) ? 'cosmos-finops-${uniqueString(rg.id)}' : cosmosAccountNameOverride
+var storageAccountComputedName = empty(storageAccountNameOverride) ? 'sa${environment}${uniqueString(rg.id, subscription().subscriptionId)}' : storageAccountNameOverride
+var functionAppComputedName = empty(functionAppNameOverride) ? 'func-finops-amortized-${uniqueString(rg.id)}' : functionAppNameOverride
+var logicAppAutoBudgetName = empty(logicAppAutoBudgetNameOverride) ? 'la-finops-auto-budget' : logicAppAutoBudgetNameOverride
+var logicAppBudgetChangeName = empty(logicAppBudgetChangeNameOverride) ? 'la-finops-budget-change' : logicAppBudgetChangeNameOverride
+var logicAppBackfillName = empty(logicAppBackfillNameOverride) ? 'la-finops-backfill' : logicAppBackfillNameOverride
+
 // ── Resource Group ───────────────────────────────────────────
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
@@ -80,6 +121,7 @@ module actionGroup 'modules/action-group.bicep' = {
   scope: rg
   params: {
     location: 'Global'
+    actionGroupName: actionGroupName
     finopsEmail: finopsEmail
     teamsWebhookUri: teamsWebhookUri
     tags: tags
@@ -127,6 +169,7 @@ module storageAccount 'modules/storage-account.bicep' = {
   params: {
     location: location
     environment: environment
+    storageAccountName: storageAccountComputedName
     tags: tags
   }
 }
@@ -137,7 +180,7 @@ module cosmosDb 'modules/cosmos-db.bicep' = {
   scope: rg
   params: {
     location: location
-    cosmosAccountName: 'cosmos-finops-${uniqueString(rg.id)}'
+    cosmosAccountName: cosmosAccountName
     tags: tags
   }
 }
@@ -148,6 +191,7 @@ module autoBudgetLogicApp 'modules/logic-app-auto-budget.bicep' = if (enableAuto
   scope: rg
   params: {
     location: location
+    logicAppName: logicAppAutoBudgetName
     finopsEmail: finopsEmail
     defaultBudgetAmount: defaultBudgetAmount
     teamsWebhookUri: teamsWebhookUri
@@ -162,6 +206,7 @@ module budgetChangeLogicApp 'modules/logic-app-budget-change.bicep' = if (enable
   scope: rg
   params: {
     location: location
+    logicAppName: logicAppBudgetChangeName
     finopsEmail: finopsEmail
     teamsWebhookUri: teamsWebhookUri
     functionAppName: enableAmortizedPipeline ? functionApp.outputs.functionAppName : ''
@@ -177,6 +222,7 @@ module backfillLogicApp 'modules/logic-app-backfill.bicep' = if (enableAmortized
   scope: rg
   params: {
     location: location
+    logicAppName: logicAppBackfillName
     functionAppName: functionApp.outputs.functionAppName
     subscriptionId: subscription().subscriptionId
     tags: tags
@@ -208,6 +254,7 @@ module functionApp 'modules/function-app.bicep' = if (enableAmortizedPipeline) {
   scope: rg
   params: {
     location: location
+    functionAppName: functionAppComputedName
     storageAccountName: storageAccount.outputs.storageAccountName
     cosmosEndpoint: cosmosDb.outputs.cosmosEndpoint
     cosmosDatabaseName: cosmosDb.outputs.cosmosDatabaseName
@@ -217,6 +264,28 @@ module functionApp 'modules/function-app.bicep' = if (enableAmortizedPipeline) {
     tags: tags
     enableRbacAssignment: enableRbacAssignment
   }
+}
+
+// ── Module 10: Networking (v2 — Private Endpoints) ─────────────
+module networking 'modules/networking.bicep' = if (enablePrivateNetworking) {
+  name: 'deploy-networking'
+  scope: rg
+  params: {
+    location: location
+    vnetName: vnetName
+    vnetAddressPrefix: vnetAddressPrefix
+    cosmosAccountId: cosmosDb.outputs.cosmosAccountId
+    cosmosAccountName: cosmosDb.outputs.cosmosAccountName
+    storageAccountId: storageAccount.outputs.storageAccountId
+    storageAccountName: storageAccount.outputs.storageAccountName
+    functionAppId: enableAmortizedPipeline ? functionApp.outputs.functionAppId : ''
+    functionAppName: enableAmortizedPipeline ? functionApp.outputs.functionAppName : ''
+    tags: tags
+  }
+  dependsOn: [
+    cosmosDb
+    storageAccount
+  ]
 }
 
 // ── Outputs ──────────────────────────────────────────────────

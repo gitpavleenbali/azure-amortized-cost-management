@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "7459795422813784796"
+      "templateHash": "7693479918982303267"
     }
   },
   "parameters": {
@@ -119,7 +119,86 @@
       "metadata": {
         "description": "Budget start date (first of current month). Once a budget is created, the start date cannot be changed — delete and recreate instead."
       }
+    },
+    "actionGroupNameOverride": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom name for the Action Group (leave blank for default: ag-finops-budget-alerts)"
+      }
+    },
+    "cosmosAccountNameOverride": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom name for the Cosmos DB account (leave blank for auto-generated unique name)"
+      }
+    },
+    "storageAccountNameOverride": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom name for the Storage Account (leave blank for auto-generated unique name)"
+      }
+    },
+    "functionAppNameOverride": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom name for the Function App (leave blank for auto-generated unique name)"
+      }
+    },
+    "logicAppAutoBudgetNameOverride": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom name for the Auto-Budget Logic App (leave blank for default: la-finops-auto-budget)"
+      }
+    },
+    "logicAppBudgetChangeNameOverride": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom name for the Budget Change Logic App (leave blank for default: la-finops-budget-change)"
+      }
+    },
+    "logicAppBackfillNameOverride": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom name for the Backfill Logic App (leave blank for default: la-finops-backfill)"
+      }
+    },
+    "enablePrivateNetworking": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable private networking — deploys VNet, private endpoints for Cosmos DB & Storage, and Function App VNet integration"
+      }
+    },
+    "vnetName": {
+      "type": "string",
+      "defaultValue": "vnet-finops-governance",
+      "metadata": {
+        "description": "VNet name (only used when enablePrivateNetworking = true)"
+      }
+    },
+    "vnetAddressPrefix": {
+      "type": "string",
+      "defaultValue": "10.100.0.0/24",
+      "metadata": {
+        "description": "VNet address space (only used when enablePrivateNetworking = true)"
+      }
     }
+  },
+  "variables": {
+    "actionGroupName": "[if(empty(parameters('actionGroupNameOverride')), 'ag-finops-budget-alerts', parameters('actionGroupNameOverride'))]",
+    "cosmosAccountName": "[if(empty(parameters('cosmosAccountNameOverride')), format('cosmos-finops-{0}', uniqueString(subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName')))), parameters('cosmosAccountNameOverride'))]",
+    "storageAccountComputedName": "[if(empty(parameters('storageAccountNameOverride')), format('sa{0}{1}', parameters('environment'), uniqueString(subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName')), subscription().subscriptionId)), parameters('storageAccountNameOverride'))]",
+    "functionAppComputedName": "[if(empty(parameters('functionAppNameOverride')), format('func-finops-amortized-{0}', uniqueString(subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName')))), parameters('functionAppNameOverride'))]",
+    "logicAppAutoBudgetName": "[if(empty(parameters('logicAppAutoBudgetNameOverride')), 'la-finops-auto-budget', parameters('logicAppAutoBudgetNameOverride'))]",
+    "logicAppBudgetChangeName": "[if(empty(parameters('logicAppBudgetChangeNameOverride')), 'la-finops-budget-change', parameters('logicAppBudgetChangeNameOverride'))]",
+    "logicAppBackfillName": "[if(empty(parameters('logicAppBackfillNameOverride')), 'la-finops-backfill', parameters('logicAppBackfillNameOverride'))]"
   },
   "resources": [
     {
@@ -142,6 +221,9 @@
         "parameters": {
           "location": {
             "value": "Global"
+          },
+          "actionGroupName": {
+            "value": "[variables('actionGroupName')]"
           },
           "finopsEmail": {
             "value": "[parameters('finopsEmail')]"
@@ -608,6 +690,9 @@
           "environment": {
             "value": "[parameters('environment')]"
           },
+          "storageAccountName": {
+            "value": "[variables('storageAccountComputedName')]"
+          },
           "tags": {
             "value": "[parameters('tags')]"
           }
@@ -731,7 +816,7 @@
             "value": "[parameters('location')]"
           },
           "cosmosAccountName": {
-            "value": "[format('cosmos-finops-{0}', uniqueString(subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))))]"
+            "value": "[variables('cosmosAccountName')]"
           },
           "tags": {
             "value": "[parameters('tags')]"
@@ -886,6 +971,9 @@
         "parameters": {
           "location": {
             "value": "[parameters('location')]"
+          },
+          "logicAppName": {
+            "value": "[variables('logicAppAutoBudgetName')]"
           },
           "finopsEmail": {
             "value": "[parameters('finopsEmail')]"
@@ -1208,6 +1296,9 @@
         "parameters": {
           "location": {
             "value": "[parameters('location')]"
+          },
+          "logicAppName": {
+            "value": "[variables('logicAppBudgetChangeName')]"
           },
           "finopsEmail": {
             "value": "[parameters('finopsEmail')]"
@@ -1601,6 +1692,9 @@
           "location": {
             "value": "[parameters('location')]"
           },
+          "logicAppName": {
+            "value": "[variables('logicAppBackfillName')]"
+          },
           "functionAppName": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app'), '2022-09-01').outputs.functionAppName.value]"
           },
@@ -1894,6 +1988,9 @@
           "location": {
             "value": "[parameters('location')]"
           },
+          "functionAppName": {
+            "value": "[variables('functionAppComputedName')]"
+          },
           "storageAccountName": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-storage-account'), '2022-09-01').outputs.storageAccountName.value]"
           },
@@ -2132,6 +2229,445 @@
       },
       "dependsOn": [
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-storage-account')]"
+      ]
+    },
+    {
+      "condition": "[parameters('enablePrivateNetworking')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-networking",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "vnetName": {
+            "value": "[parameters('vnetName')]"
+          },
+          "vnetAddressPrefix": {
+            "value": "[parameters('vnetAddressPrefix')]"
+          },
+          "cosmosAccountId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db'), '2022-09-01').outputs.cosmosAccountId.value]"
+          },
+          "cosmosAccountName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db'), '2022-09-01').outputs.cosmosAccountName.value]"
+          },
+          "storageAccountId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-storage-account'), '2022-09-01').outputs.storageAccountId.value]"
+          },
+          "storageAccountName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-storage-account'), '2022-09-01').outputs.storageAccountName.value]"
+          },
+          "functionAppId": "[if(parameters('enableAmortizedPipeline'), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app'), '2022-09-01').outputs.functionAppId.value), createObject('value', ''))]",
+          "functionAppName": "[if(parameters('enableAmortizedPipeline'), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app'), '2022-09-01').outputs.functionAppName.value), createObject('value', ''))]",
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "2367713842103183307"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "vnetName": {
+              "type": "string",
+              "defaultValue": "vnet-finops-governance",
+              "metadata": {
+                "description": "Name of the VNet to create or use"
+              }
+            },
+            "vnetAddressPrefix": {
+              "type": "string",
+              "defaultValue": "10.100.0.0/24",
+              "metadata": {
+                "description": "VNet address space"
+              }
+            },
+            "privateEndpointSubnetName": {
+              "type": "string",
+              "defaultValue": "snet-private-endpoints",
+              "metadata": {
+                "description": "Subnet for private endpoints"
+              }
+            },
+            "privateEndpointSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.100.0.0/26"
+            },
+            "functionAppSubnetName": {
+              "type": "string",
+              "defaultValue": "snet-function-app",
+              "metadata": {
+                "description": "Subnet for Function App VNet integration"
+              }
+            },
+            "functionAppSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.100.0.64/26"
+            },
+            "cosmosAccountId": {
+              "type": "string",
+              "metadata": {
+                "description": "Cosmos DB account ID for private endpoint"
+              }
+            },
+            "cosmosAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Cosmos DB account name"
+              }
+            },
+            "storageAccountId": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account ID for private endpoint"
+              }
+            },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account name"
+              }
+            },
+            "functionAppId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Function App ID (empty if pipeline disabled)"
+              }
+            },
+            "functionAppName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Function App name"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2024-05-01",
+              "name": "[parameters('vnetName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('vnetAddressPrefix')]"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "[parameters('privateEndpointSubnetName')]",
+                    "properties": {
+                      "addressPrefix": "[parameters('privateEndpointSubnetPrefix')]",
+                      "privateEndpointNetworkPolicies": "Disabled"
+                    }
+                  },
+                  {
+                    "name": "[parameters('functionAppSubnetName')]",
+                    "properties": {
+                      "addressPrefix": "[parameters('functionAppSubnetPrefix')]",
+                      "delegations": [
+                        {
+                          "name": "Microsoft.Web.serverFarms",
+                          "properties": {
+                            "serviceName": "Microsoft.Web/serverFarms"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2024-06-01",
+              "name": "privatelink.documents.azure.com",
+              "location": "global",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2024-06-01",
+              "name": "privatelink.blob.core.windows.net",
+              "location": "global",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2024-06-01",
+              "name": "privatelink.table.core.windows.net",
+              "location": "global",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2024-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.documents.azure.com', format('{0}-cosmos-link', parameters('vnetName')))]",
+              "location": "global",
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                },
+                "registrationEnabled": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.documents.azure.com')]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2024-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.blob.core.windows.net', format('{0}-blob-link', parameters('vnetName')))]",
+              "location": "global",
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                },
+                "registrationEnabled": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.blob.core.windows.net')]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2024-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.table.core.windows.net', format('{0}-table-link', parameters('vnetName')))]",
+              "location": "global",
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                },
+                "registrationEnabled": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.table.core.windows.net')]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2024-05-01",
+              "name": "[format('nsg-{0}', parameters('privateEndpointSubnetName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "DenyAllInbound",
+                    "properties": {
+                      "priority": 4096,
+                      "direction": "Inbound",
+                      "access": "Deny",
+                      "protocol": "*",
+                      "sourceAddressPrefix": "*",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "*"
+                    }
+                  },
+                  {
+                    "name": "AllowVnetInbound",
+                    "properties": {
+                      "priority": 100,
+                      "direction": "Inbound",
+                      "access": "Allow",
+                      "protocol": "*",
+                      "sourceAddressPrefix": "VirtualNetwork",
+                      "sourcePortRange": "*",
+                      "destinationAddressPrefix": "VirtualNetwork",
+                      "destinationPortRange": "*"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2024-05-01",
+              "name": "[format('pe-{0}', parameters('cosmosAccountName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "subnet": {
+                  "id": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2024-05-01').subnets[0].id]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[format('pe-{0}-sql', parameters('cosmosAccountName'))]",
+                    "properties": {
+                      "privateLinkServiceId": "[parameters('cosmosAccountId')]",
+                      "groupIds": [
+                        "Sql"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2024-05-01",
+              "name": "[format('{0}/{1}', format('pe-{0}', parameters('cosmosAccountName')), 'cosmos-dns')]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "privatelink-documents-azure-com",
+                    "properties": {
+                      "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.documents.azure.com')]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.documents.azure.com')]",
+                "[resourceId('Microsoft.Network/privateEndpoints', format('pe-{0}', parameters('cosmosAccountName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2024-05-01",
+              "name": "[format('pe-{0}-blob', parameters('storageAccountName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "subnet": {
+                  "id": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2024-05-01').subnets[0].id]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[format('pe-{0}-blob', parameters('storageAccountName'))]",
+                    "properties": {
+                      "privateLinkServiceId": "[parameters('storageAccountId')]",
+                      "groupIds": [
+                        "blob"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2024-05-01",
+              "name": "[format('{0}/{1}', format('pe-{0}-blob', parameters('storageAccountName')), 'blob-dns')]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "privatelink-blob-core-windows-net",
+                    "properties": {
+                      "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.blob.core.windows.net')]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.blob.core.windows.net')]",
+                "[resourceId('Microsoft.Network/privateEndpoints', format('pe-{0}-blob', parameters('storageAccountName')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2024-05-01",
+              "name": "[format('pe-{0}-table', parameters('storageAccountName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "subnet": {
+                  "id": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2024-05-01').subnets[0].id]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[format('pe-{0}-table', parameters('storageAccountName'))]",
+                    "properties": {
+                      "privateLinkServiceId": "[parameters('storageAccountId')]",
+                      "groupIds": [
+                        "table"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+              "apiVersion": "2024-05-01",
+              "name": "[format('{0}/{1}', format('pe-{0}-table', parameters('storageAccountName')), 'table-dns')]",
+              "properties": {
+                "privateDnsZoneConfigs": [
+                  {
+                    "name": "privatelink-table-core-windows-net",
+                    "properties": {
+                      "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.table.core.windows.net')]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.table.core.windows.net')]",
+                "[resourceId('Microsoft.Network/privateEndpoints', format('pe-{0}-table', parameters('storageAccountName')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "vnetId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+            },
+            "privateEndpointSubnetId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2024-05-01').subnets[0].id]"
+            },
+            "functionAppSubnetId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')), '2024-05-01').subnets[1].id]"
+            },
+            "vnetName": {
+              "type": "string",
+              "value": "[parameters('vnetName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app')]",
         "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-storage-account')]"
       ]
