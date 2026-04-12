@@ -1,6 +1,6 @@
 # Azure Amortized Cost Management
 
-[![CI — Validate & Test](https://github.com/pavleenbali/azure-amortized-cost-management/actions/workflows/ci.yml/badge.svg)](https://github.com/pavleenbali/azure-amortized-cost-management/actions/workflows/ci.yml)
+[![CI — Validate & Test](https://github.com/gitpavleenbali/azure-amortized-cost-management/actions/workflows/ci.yml/badge.svg)](https://github.com/gitpavleenbali/azure-amortized-cost-management/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Azure](https://img.shields.io/badge/Azure-Serverless-0078D4?logo=microsoftazure)](https://azure.microsoft.com)
 [![FinOps](https://img.shields.io/badge/FinOps-Cost%20Management-green)](https://www.finops.org/)
@@ -8,8 +8,8 @@
 > Enterprise-grade budget management and **amortized cost** alerting for Azure at scale.
 > Bridges Azure's actual-cost-only budget limitation with amortized cost tracking for Reserved Instances and Savings Plans.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fpavleenbali%2Fazure-amortized-cost-management%2Fmain%2Fazuredeploy.json)
-[![Visualize](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/visualizebutton.svg?sanitize=true)](http://armviz.io/#/?load=https%3A%2F%2Fraw.githubusercontent.com%2Fpavleenbali%2Fazure-amortized-cost-management%2Fmain%2Fazuredeploy.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fgitpavleenbali%2Fazure-amortized-cost-management%2Fmain%2Fazuredeploy.json)
+[![Visualize](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/visualizebutton.svg?sanitize=true)](http://armviz.io/#/?load=https%3A%2F%2Fraw.githubusercontent.com%2Fgitpavleenbali%2Fazure-amortized-cost-management%2Fmain%2Fazuredeploy.json)
 
 ---
 

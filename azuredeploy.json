@@ -1,0 +1,2167 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "2104127195661807695"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "allowedValues": [
+        "dev",
+        "staging",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment name (dev, staging, prod)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "westeurope",
+      "metadata": {
+        "description": "Azure region for resource deployment"
+      }
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "defaultValue": "[format('rg-finops-governance-{0}', parameters('environment'))]",
+      "metadata": {
+        "description": "Resource group for FinOps governance resources"
+      }
+    },
+    "finopsEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "FinOps team email for alert routing"
+      }
+    },
+    "teamsWebhookUri": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Teams incoming webhook URL for budget alert channel"
+      }
+    },
+    "defaultBudgetAmount": {
+      "type": "int",
+      "defaultValue": 100,
+      "metadata": {
+        "description": "Default budget amount for new resource groups (EUR)"
+      }
+    },
+    "subscriptionBudgetAmount": {
+      "type": "int",
+      "defaultValue": 10000,
+      "metadata": {
+        "description": "Monthly subscription-level budget (EUR)"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "finops-platform": "budget-alerts-automation",
+        "managed-by": "finops-iac",
+        "environment": "[parameters('environment')]",
+        "Owner": "FinOps-Team",
+        "CostCenter": "HybridCloud-FinOps"
+      },
+      "metadata": {
+        "description": "Tags to apply to all resources"
+      }
+    },
+    "enableAmortizedPipeline": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable amortized cost pipeline (requires Function App)"
+      }
+    },
+    "enableAutoBudget": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable auto-budget Logic App for new RG creation"
+      }
+    },
+    "enableSelfServiceChange": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable self-service budget change Logic App"
+      }
+    },
+    "enablePolicy": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable policy definition and assignment (requires Resource Policy Contributor)"
+      }
+    },
+    "enableRbacAssignment": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable RBAC role assignments for Logic App managed identities (requires User Access Administrator)"
+      }
+    },
+    "functionAppKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Function App host key for Cosmos sync from budget-change Logic App (set post-deploy)"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('resourceGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-action-group",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "Global"
+          },
+          "finopsEmail": {
+            "value": "[parameters('finopsEmail')]"
+          },
+          "teamsWebhookUri": {
+            "value": "[parameters('teamsWebhookUri')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "6645966421576733279"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "Global"
+            },
+            "actionGroupName": {
+              "type": "string",
+              "defaultValue": "ag-finops-budget-alerts"
+            },
+            "shortName": {
+              "type": "string",
+              "defaultValue": "FinOpsBgt"
+            },
+            "finopsEmail": {
+              "type": "string"
+            },
+            "teamsWebhookUri": {
+              "type": "securestring",
+              "defaultValue": ""
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "variables": {
+            "enableTeams": "[not(empty(parameters('teamsWebhookUri')))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/actionGroups",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('actionGroupName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "groupShortName": "[parameters('shortName')]",
+                "enabled": true,
+                "emailReceivers": [
+                  {
+                    "name": "finops-team",
+                    "emailAddress": "[parameters('finopsEmail')]",
+                    "useCommonAlertSchema": true
+                  }
+                ],
+                "webhookReceivers": "[if(variables('enableTeams'), createArray(createObject('name', 'teams-finops-budget-alerts', 'serviceUri', parameters('teamsWebhookUri'), 'useCommonAlertSchema', true())), createArray())]",
+                "armRoleReceivers": [
+                  {
+                    "name": "subscription-contributors",
+                    "roleId": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+                    "useCommonAlertSchema": true
+                  }
+                ]
+              }
+            }
+          ],
+          "outputs": {
+            "actionGroupId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/actionGroups', parameters('actionGroupName'))]"
+            },
+            "actionGroupName": {
+              "type": "string",
+              "value": "[parameters('actionGroupName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-subscription-budget",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "budgetName": {
+            "value": "[format('finops-sub-budget-{0}', parameters('environment'))]"
+          },
+          "budgetAmount": {
+            "value": "[parameters('subscriptionBudgetAmount')]"
+          },
+          "scope": {
+            "value": "subscription"
+          },
+          "finopsEmail": {
+            "value": "[parameters('finopsEmail')]"
+          },
+          "actionGroupId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-action-group'), '2022-09-01').outputs.actionGroupId.value]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "13481610797217475565"
+            }
+          },
+          "parameters": {
+            "budgetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Budget name"
+              }
+            },
+            "budgetAmount": {
+              "type": "int",
+              "metadata": {
+                "description": "Monthly budget amount in billing currency"
+              }
+            },
+            "scope": {
+              "type": "string",
+              "defaultValue": "subscription",
+              "allowedValues": [
+                "subscription",
+                "resourceGroup"
+              ],
+              "metadata": {
+                "description": "Scope: subscription or resourceGroup"
+              }
+            },
+            "resourceGroupName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Resource group name (required if scope is resourceGroup)"
+              }
+            },
+            "finopsEmail": {
+              "type": "string",
+              "metadata": {
+                "description": "FinOps team email"
+              }
+            },
+            "ownerEmail": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "RG owner email (for per-threshold routing)"
+              }
+            },
+            "buLeadEmail": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "BU lead email (added at 75%+)"
+              }
+            },
+            "actionGroupId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Action Group resource ID"
+              }
+            },
+            "startDate": {
+              "type": "string",
+              "defaultValue": "[format('{0}-{1}-01T00:00:00Z', utcNow('yyyy'), utcNow('MM'))]",
+              "metadata": {
+                "description": "Budget start date"
+              }
+            },
+            "endDate": {
+              "type": "string",
+              "defaultValue": "2027-03-31T00:00:00Z",
+              "metadata": {
+                "description": "Budget end date"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "variables": {
+            "ownerOnly": "[if(empty(parameters('ownerEmail')), createArray(parameters('finopsEmail')), createArray(parameters('ownerEmail')))]",
+            "ownerPlusBuLead": "[if(empty(parameters('buLeadEmail')), variables('ownerOnly'), concat(variables('ownerOnly'), createArray(parameters('buLeadEmail'))))]",
+            "allContacts": "[union(variables('ownerPlusBuLead'), createArray(parameters('finopsEmail')))]",
+            "actionGroupArray": "[if(empty(parameters('actionGroupId')), createArray(), createArray(parameters('actionGroupId')))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Consumption/budgets",
+              "apiVersion": "2023-11-01",
+              "name": "[parameters('budgetName')]",
+              "properties": {
+                "category": "Cost",
+                "amount": "[parameters('budgetAmount')]",
+                "timeGrain": "Monthly",
+                "timePeriod": {
+                  "startDate": "[parameters('startDate')]",
+                  "endDate": "[parameters('endDate')]"
+                },
+                "notifications": {
+                  "Actual_GreaterThan_50": {
+                    "enabled": true,
+                    "operator": "GreaterThan",
+                    "threshold": 50,
+                    "thresholdType": "Actual",
+                    "contactEmails": "[variables('ownerOnly')]",
+                    "contactGroups": []
+                  },
+                  "Actual_GreaterThan_75": {
+                    "enabled": true,
+                    "operator": "GreaterThan",
+                    "threshold": 75,
+                    "thresholdType": "Actual",
+                    "contactEmails": "[variables('ownerPlusBuLead')]",
+                    "contactGroups": "[variables('actionGroupArray')]"
+                  },
+                  "Forecasted_GreaterThan_90": {
+                    "enabled": true,
+                    "operator": "GreaterThan",
+                    "threshold": 90,
+                    "thresholdType": "Forecasted",
+                    "contactEmails": "[variables('allContacts')]",
+                    "contactGroups": "[variables('actionGroupArray')]"
+                  },
+                  "Actual_GreaterThan_100": {
+                    "enabled": true,
+                    "operator": "GreaterThan",
+                    "threshold": 100,
+                    "thresholdType": "Actual",
+                    "contactEmails": "[variables('allContacts')]",
+                    "contactGroups": "[variables('actionGroupArray')]"
+                  },
+                  "Forecasted_GreaterThan_110": {
+                    "enabled": true,
+                    "operator": "GreaterThan",
+                    "threshold": 110,
+                    "thresholdType": "Forecasted",
+                    "contactEmails": "[variables('allContacts')]",
+                    "contactGroups": "[variables('actionGroupArray')]"
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "budgetId": {
+              "type": "string",
+              "value": "[subscriptionResourceId('Microsoft.Consumption/budgets', parameters('budgetName'))]"
+            },
+            "budgetName": {
+              "type": "string",
+              "value": "[parameters('budgetName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-action-group')]"
+      ]
+    },
+    {
+      "condition": "[parameters('enablePolicy')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-policy-definition",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "environment": {
+            "value": "[parameters('environment')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "4115552860985602913"
+            }
+          },
+          "parameters": {
+            "environment": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/policyDefinitions",
+              "apiVersion": "2021-06-01",
+              "name": "finops-audit-rg-without-budget",
+              "properties": {
+                "displayName": "FinOps: Audit Resource Groups Without Budget",
+                "description": "Flags resource groups that do not have a Microsoft.Consumption/budgets resource. FinOps baseline requirement for cost governance.",
+                "policyType": "Custom",
+                "mode": "All",
+                "metadata": {
+                  "category": "FinOps",
+                  "version": "1.0.0",
+                  "environment": "[parameters('environment')]"
+                },
+                "parameters": {
+                  "effect": {
+                    "type": "String",
+                    "metadata": {
+                      "displayName": "Effect",
+                      "description": "AuditIfNotExists flags non-compliance without blocking."
+                    },
+                    "allowedValues": [
+                      "AuditIfNotExists",
+                      "Disabled"
+                    ],
+                    "defaultValue": "AuditIfNotExists"
+                  }
+                },
+                "policyRule": {
+                  "if": {
+                    "field": "type",
+                    "equals": "Microsoft.Resources/subscriptions/resourceGroups"
+                  },
+                  "then": {
+                    "effect": "[[parameters('effect')]",
+                    "details": {
+                      "type": "Microsoft.Consumption/budgets",
+                      "existenceCondition": {
+                        "field": "Microsoft.Consumption/budgets/amount",
+                        "greater": 0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "policyDefinitionId": {
+              "type": "string",
+              "value": "[subscriptionResourceId('Microsoft.Authorization/policyDefinitions', 'finops-audit-rg-without-budget')]"
+            },
+            "policyDefinitionName": {
+              "type": "string",
+              "value": "finops-audit-rg-without-budget"
+            }
+          }
+        }
+      }
+    },
+    {
+      "condition": "[parameters('enablePolicy')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-policy-assignment",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "policyDefinitionId": {
+            "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-policy-definition'), '2022-09-01').outputs.policyDefinitionId.value]"
+          },
+          "environment": {
+            "value": "[parameters('environment')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "17685903338165919547"
+            }
+          },
+          "parameters": {
+            "policyDefinitionId": {
+              "type": "string"
+            },
+            "environment": {
+              "type": "string"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/policyAssignments",
+              "apiVersion": "2022-06-01",
+              "name": "[format('finops-audit-rg-budgets-{0}', parameters('environment'))]",
+              "properties": {
+                "displayName": "[format('FinOps: Audit RGs Without Budget ({0})', parameters('environment'))]",
+                "policyDefinitionId": "[parameters('policyDefinitionId')]",
+                "enforcementMode": "Default",
+                "metadata": {
+                  "category": "FinOps",
+                  "environment": "[parameters('environment')]"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "assignmentId": {
+              "type": "string",
+              "value": "[subscriptionResourceId('Microsoft.Authorization/policyAssignments', format('finops-audit-rg-budgets-{0}', parameters('environment')))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-policy-definition')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-storage-account",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "10296734269838575615"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "environment": {
+              "type": "string"
+            },
+            "storageAccountName": {
+              "type": "string",
+              "defaultValue": "[format('safinops{0}', uniqueString(resourceGroup().id))]"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-05-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "StorageV2",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "properties": {
+                "minimumTlsVersion": "TLS1_2",
+                "supportsHttpsTrafficOnly": true,
+                "allowBlobPublicAccess": false,
+                "accessTier": "Hot"
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'amortized-cost-exports')]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/tableServices/tables",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'finopsInventory')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/tableServices', parameters('storageAccountName'), 'default')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageAccountName": {
+              "type": "string",
+              "value": "[parameters('storageAccountName')]"
+            },
+            "storageAccountId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            },
+            "blobEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').primaryEndpoints.blob]"
+            },
+            "tableEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').primaryEndpoints.table]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-cosmos-db",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "cosmosAccountName": {
+            "value": "[format('cosmos-finops-{0}', uniqueString(subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))))]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "3708617252769135393"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "cosmosAccountName": {
+              "type": "string",
+              "defaultValue": "cosmos-finops-inventory"
+            },
+            "databaseName": {
+              "type": "string",
+              "defaultValue": "finops"
+            },
+            "containerName": {
+              "type": "string",
+              "defaultValue": "inventory"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts",
+              "apiVersion": "2024-05-15",
+              "name": "[parameters('cosmosAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('finops-component', 'inventory-store'))]",
+              "kind": "GlobalDocumentDB",
+              "properties": {
+                "databaseAccountOfferType": "Standard",
+                "capabilities": [
+                  {
+                    "name": "EnableServerless"
+                  }
+                ],
+                "locations": [
+                  {
+                    "locationName": "[parameters('location')]",
+                    "failoverPriority": 0
+                  }
+                ],
+                "consistencyPolicy": {
+                  "defaultConsistencyLevel": "Session"
+                },
+                "enableFreeTier": false
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}', parameters('cosmosAccountName'), parameters('databaseName'))]",
+              "properties": {
+                "resource": {
+                  "id": "[parameters('databaseName')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}/{2}', parameters('cosmosAccountName'), parameters('databaseName'), parameters('containerName'))]",
+              "properties": {
+                "resource": {
+                  "id": "[parameters('containerName')]",
+                  "partitionKey": {
+                    "paths": [
+                      "/subscriptionId"
+                    ],
+                    "kind": "Hash"
+                  },
+                  "indexingPolicy": {
+                    "indexingMode": "consistent",
+                    "automatic": true,
+                    "includedPaths": [
+                      {
+                        "path": "/*"
+                      }
+                    ],
+                    "excludedPaths": [
+                      {
+                        "path": "/\"_etag\"/?"
+                      }
+                    ]
+                  },
+                  "defaultTtl": -1
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosAccountName'), parameters('databaseName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "cosmosAccountName": {
+              "type": "string",
+              "value": "[parameters('cosmosAccountName')]"
+            },
+            "cosmosEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), '2024-05-15').documentEndpoint]"
+            },
+            "cosmosDatabaseName": {
+              "type": "string",
+              "value": "[parameters('databaseName')]"
+            },
+            "cosmosContainerName": {
+              "type": "string",
+              "value": "[parameters('containerName')]"
+            },
+            "cosmosAccountId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableAutoBudget')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-auto-budget-logic-app",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "finopsEmail": {
+            "value": "[parameters('finopsEmail')]"
+          },
+          "defaultBudgetAmount": {
+            "value": "[parameters('defaultBudgetAmount')]"
+          },
+          "teamsWebhookUri": {
+            "value": "[parameters('teamsWebhookUri')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "enableRbacAssignment": {
+            "value": "[parameters('enableRbacAssignment')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "15783089834367630473"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "logicAppName": {
+              "type": "string",
+              "defaultValue": "la-finops-auto-budget"
+            },
+            "finopsEmail": {
+              "type": "string"
+            },
+            "defaultBudgetAmount": {
+              "type": "int",
+              "defaultValue": 100
+            },
+            "teamsWebhookUri": {
+              "type": "securestring",
+              "defaultValue": ""
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "enableRbacAssignment": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Set to false if deployer lacks User Access Administrator role"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Logic/workflows",
+              "apiVersion": "2019-05-01",
+              "name": "[parameters('logicAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('finops-component', 'auto-budget'))]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "state": "Enabled",
+                "definition": {
+                  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                  "contentVersion": "1.0.0.0",
+                  "parameters": {
+                    "finopsEmail": {
+                      "type": "String",
+                      "defaultValue": "[parameters('finopsEmail')]"
+                    },
+                    "defaultBudgetAmount": {
+                      "type": "Int",
+                      "defaultValue": "[parameters('defaultBudgetAmount')]"
+                    },
+                    "teamsWebhookUri": {
+                      "type": "SecureString",
+                      "defaultValue": "[parameters('teamsWebhookUri')]"
+                    }
+                  },
+                  "triggers": {
+                    "manual": {
+                      "type": "Request",
+                      "kind": "Http",
+                      "inputs": {
+                        "schema": {
+                          "type": "object",
+                          "properties": {
+                            "subject": {
+                              "type": "string"
+                            },
+                            "eventType": {
+                              "type": "string"
+                            },
+                            "data": {
+                              "type": "object",
+                              "properties": {
+                                "resourceUri": {
+                                  "type": "string"
+                                },
+                                "subscriptionId": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "actions": {
+                    "Parse_Event": {
+                      "type": "ParseJson",
+                      "inputs": {
+                        "content": "@if(equals(string(triggerBody()?['subject']), ''), triggerBody()[0], triggerBody())",
+                        "schema": {
+                          "type": "object",
+                          "properties": {
+                            "subject": {
+                              "type": "string"
+                            },
+                            "eventType": {
+                              "type": "string"
+                            },
+                            "data": {
+                              "type": "object",
+                              "properties": {
+                                "resourceUri": {
+                                  "type": "string"
+                                },
+                                "subscriptionId": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "runAfter": {}
+                    },
+                    "Extract_RG_Name": {
+                      "type": "Compose",
+                      "inputs": "@last(split(body('Parse_Event')?['subject'], '/'))",
+                      "runAfter": {
+                        "Parse_Event": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "Extract_Sub_Id": {
+                      "type": "Compose",
+                      "inputs": "@split(body('Parse_Event')?['subject'], '/')[2]",
+                      "runAfter": {
+                        "Parse_Event": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "Check_Budget_Exists": {
+                      "type": "Http",
+                      "inputs": {
+                        "method": "GET",
+                        "uri": "https://management.azure.com/subscriptions/@{outputs('Extract_Sub_Id')}/resourceGroups/@{outputs('Extract_RG_Name')}/providers/Microsoft.Consumption/budgets?api-version=2023-11-01",
+                        "authentication": {
+                          "type": "ManagedServiceIdentity"
+                        }
+                      },
+                      "runAfter": {
+                        "Extract_RG_Name": [
+                          "Succeeded"
+                        ],
+                        "Extract_Sub_Id": [
+                          "Succeeded"
+                        ]
+                      }
+                    },
+                    "Create_If_Missing": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "equals": [
+                              "@length(body('Check_Budget_Exists')?['value'])",
+                              0
+                            ]
+                          }
+                        ]
+                      },
+                      "runAfter": {
+                        "Check_Budget_Exists": [
+                          "Succeeded"
+                        ]
+                      },
+                      "actions": {
+                        "Create_Budget": {
+                          "type": "Http",
+                          "inputs": {
+                            "method": "PUT",
+                            "uri": "https://management.azure.com/subscriptions/@{outputs('Extract_Sub_Id')}/resourceGroups/@{outputs('Extract_RG_Name')}/providers/Microsoft.Consumption/budgets/finops-rg-budget-@{outputs('Extract_RG_Name')}?api-version=2023-11-01",
+                            "authentication": {
+                              "type": "ManagedServiceIdentity"
+                            },
+                            "body": {
+                              "properties": {
+                                "category": "Cost",
+                                "amount": "@parameters('defaultBudgetAmount')",
+                                "timeGrain": "Monthly",
+                                "timePeriod": {
+                                  "startDate": "@{formatDateTime(startOfMonth(utcNow()), 'yyyy-MM-ddTHH:mm:ssZ')}",
+                                  "endDate": "2027-03-31T00:00:00Z"
+                                },
+                                "notifications": {
+                                  "Forecasted_90": {
+                                    "enabled": true,
+                                    "operator": "GreaterThan",
+                                    "threshold": 90,
+                                    "thresholdType": "Forecasted",
+                                    "contactEmails": [
+                                      "@parameters('finopsEmail')"
+                                    ]
+                                  },
+                                  "Actual_100": {
+                                    "enabled": true,
+                                    "operator": "GreaterThan",
+                                    "threshold": 100,
+                                    "thresholdType": "Actual",
+                                    "contactEmails": [
+                                      "@parameters('finopsEmail')"
+                                    ]
+                                  },
+                                  "Forecasted_110": {
+                                    "enabled": true,
+                                    "operator": "GreaterThan",
+                                    "threshold": 110,
+                                    "thresholdType": "Forecasted",
+                                    "contactEmails": [
+                                      "@parameters('finopsEmail')"
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "runAfter": {}
+                        },
+                        "Notify_Teams": {
+                          "type": "Http",
+                          "inputs": {
+                            "method": "POST",
+                            "uri": "@parameters('teamsWebhookUri')",
+                            "body": {
+                              "text": "**[FinOps Auto-Budget]** Budget EUR @{parameters('defaultBudgetAmount')} created for RG: **@{outputs('Extract_RG_Name')}**"
+                            }
+                          },
+                          "runAfter": {
+                            "Create_Budget": [
+                              "Succeeded"
+                            ]
+                          }
+                        }
+                      },
+                      "else": {
+                        "actions": {}
+                      }
+                    }
+                  },
+                  "outputs": {}
+                }
+              }
+            },
+            {
+              "condition": "[parameters('enableRbacAssignment')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), 'CostManagementContributor')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '434105ed-43f6-45c7-a02f-909b2ba83430')]",
+                "principalId": "[reference(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), '2019-05-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "logicAppId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), '2019-05-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableSelfServiceChange')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-budget-change-logic-app",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "finopsEmail": {
+            "value": "[parameters('finopsEmail')]"
+          },
+          "teamsWebhookUri": {
+            "value": "[parameters('teamsWebhookUri')]"
+          },
+          "functionAppName": "[if(parameters('enableAmortizedPipeline'), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app'), '2022-09-01').outputs.functionAppName.value), createObject('value', ''))]",
+          "functionAppKey": {
+            "value": "[parameters('functionAppKey')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "enableRbacAssignment": {
+            "value": "[parameters('enableRbacAssignment')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "2719909455722615271"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "logicAppName": {
+              "type": "string",
+              "defaultValue": "la-finops-budget-change"
+            },
+            "finopsEmail": {
+              "type": "string"
+            },
+            "teamsWebhookUri": {
+              "type": "securestring",
+              "defaultValue": ""
+            },
+            "functionAppKey": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Function App host key for /api/update-budget"
+              }
+            },
+            "functionAppName": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "enableRbacAssignment": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Set to false if deployer lacks User Access Administrator role"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Logic/workflows",
+              "apiVersion": "2019-05-01",
+              "name": "[parameters('logicAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('finops-component', 'budget-change'))]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "state": "Enabled",
+                "definition": {
+                  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                  "contentVersion": "1.0.0.0",
+                  "parameters": {
+                    "finopsEmail": {
+                      "type": "String",
+                      "defaultValue": "[parameters('finopsEmail')]"
+                    },
+                    "teamsWebhookUri": {
+                      "type": "SecureString",
+                      "defaultValue": "[parameters('teamsWebhookUri')]"
+                    },
+                    "functionAppKey": {
+                      "type": "SecureString",
+                      "defaultValue": "[parameters('functionAppKey')]"
+                    },
+                    "functionAppName": {
+                      "type": "String",
+                      "defaultValue": "[parameters('functionAppName')]"
+                    }
+                  },
+                  "triggers": {
+                    "manual": {
+                      "type": "Request",
+                      "kind": "Http",
+                      "inputs": {
+                        "schema": {
+                          "type": "object",
+                          "required": [
+                            "subscriptionId",
+                            "resourceGroupName",
+                            "newBudgetAmount",
+                            "reason",
+                            "requestorEmail"
+                          ],
+                          "properties": {
+                            "subscriptionId": {
+                              "type": "string"
+                            },
+                            "resourceGroupName": {
+                              "type": "string"
+                            },
+                            "newBudgetAmount": {
+                              "type": "integer",
+                              "minimum": 100
+                            },
+                            "reason": {
+                              "type": "string"
+                            },
+                            "requestorEmail": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "actions": {
+                    "Validate_Floor": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "less": [
+                              "@triggerBody()?['newBudgetAmount']",
+                              100
+                            ]
+                          }
+                        ]
+                      },
+                      "runAfter": {},
+                      "actions": {
+                        "Reject_Below_Floor": {
+                          "type": "Response",
+                          "inputs": {
+                            "statusCode": 400,
+                            "body": {
+                              "error": "Budget must be at least EUR 100",
+                              "requested": "@triggerBody()?['newBudgetAmount']"
+                            }
+                          }
+                        }
+                      },
+                      "else": {
+                        "actions": {
+                          "Get_Current_Budget": {
+                            "type": "Http",
+                            "inputs": {
+                              "method": "GET",
+                              "uri": "https://management.azure.com/subscriptions/@{triggerBody()?['subscriptionId']}/resourceGroups/@{triggerBody()?['resourceGroupName']}/providers/Microsoft.Consumption/budgets?api-version=2023-11-01",
+                              "authentication": {
+                                "type": "ManagedServiceIdentity"
+                              }
+                            },
+                            "runAfter": {}
+                          },
+                          "Extract_Current": {
+                            "type": "Compose",
+                            "inputs": "@if(greater(length(body('Get_Current_Budget')?['value']), 0), body('Get_Current_Budget')?['value'][0]?['properties']?['amount'], 100)",
+                            "runAfter": {
+                              "Get_Current_Budget": [
+                                "Succeeded"
+                              ]
+                            }
+                          },
+                          "Extract_Name": {
+                            "type": "Compose",
+                            "inputs": "@if(greater(length(body('Get_Current_Budget')?['value']), 0), body('Get_Current_Budget')?['value'][0]?['name'], concat('finops-rg-budget-', triggerBody()?['resourceGroupName']))",
+                            "runAfter": {
+                              "Get_Current_Budget": [
+                                "Succeeded"
+                              ]
+                            }
+                          },
+                          "Validate_Cap": {
+                            "type": "If",
+                            "expression": {
+                              "and": [
+                                {
+                                  "greater": [
+                                    "@triggerBody()?['newBudgetAmount']",
+                                    "@mul(outputs('Extract_Current'), 3)"
+                                  ]
+                                }
+                              ]
+                            },
+                            "runAfter": {
+                              "Extract_Current": [
+                                "Succeeded"
+                              ],
+                              "Extract_Name": [
+                                "Succeeded"
+                              ]
+                            },
+                            "actions": {
+                              "Reject_Over_Cap": {
+                                "type": "Response",
+                                "inputs": {
+                                  "statusCode": 400,
+                                  "body": {
+                                    "error": "Exceeds 3x cap. Max: EUR @{mul(outputs('Extract_Current'), 3)}",
+                                    "current": "@outputs('Extract_Current')"
+                                  }
+                                }
+                              }
+                            },
+                            "else": {
+                              "actions": {
+                                "Update_Budget": {
+                                  "type": "Http",
+                                  "inputs": {
+                                    "method": "PUT",
+                                    "uri": "https://management.azure.com/subscriptions/@{triggerBody()?['subscriptionId']}/resourceGroups/@{triggerBody()?['resourceGroupName']}/providers/Microsoft.Consumption/budgets/@{outputs('Extract_Name')}?api-version=2023-11-01",
+                                    "authentication": {
+                                      "type": "ManagedServiceIdentity"
+                                    },
+                                    "body": {
+                                      "properties": {
+                                        "category": "Cost",
+                                        "amount": "@triggerBody()?['newBudgetAmount']",
+                                        "timeGrain": "Monthly",
+                                        "timePeriod": {
+                                          "startDate": "@{formatDateTime(startOfMonth(utcNow()), 'yyyy-MM-ddTHH:mm:ssZ')}",
+                                          "endDate": "2027-03-31T00:00:00Z"
+                                        },
+                                        "notifications": {
+                                          "Forecasted_90": {
+                                            "enabled": true,
+                                            "operator": "GreaterThan",
+                                            "threshold": 90,
+                                            "thresholdType": "Forecasted",
+                                            "contactEmails": [
+                                              "@{triggerBody()?['requestorEmail']}",
+                                              "@parameters('finopsEmail')"
+                                            ]
+                                          },
+                                          "Actual_100": {
+                                            "enabled": true,
+                                            "operator": "GreaterThan",
+                                            "threshold": 100,
+                                            "thresholdType": "Actual",
+                                            "contactEmails": [
+                                              "@{triggerBody()?['requestorEmail']}",
+                                              "@parameters('finopsEmail')"
+                                            ]
+                                          },
+                                          "Forecasted_110": {
+                                            "enabled": true,
+                                            "operator": "GreaterThan",
+                                            "threshold": 110,
+                                            "thresholdType": "Forecasted",
+                                            "contactEmails": [
+                                              "@{triggerBody()?['requestorEmail']}",
+                                              "@parameters('finopsEmail')"
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "runAfter": {}
+                                },
+                                "Update_Cosmos_Inventory": {
+                                  "type": "Http",
+                                  "inputs": {
+                                    "method": "POST",
+                                    "uri": "https://@{parameters('functionAppName')}.azurewebsites.net/api/update-budget?code=@{parameters('functionAppKey')}",
+                                    "body": {
+                                      "subscriptionId": "@triggerBody()?['subscriptionId']",
+                                      "resourceGroupName": "@triggerBody()?['resourceGroupName']",
+                                      "newBudgetAmount": "@triggerBody()?['newBudgetAmount']",
+                                      "requestorEmail": "@triggerBody()?['requestorEmail']",
+                                      "reason": "@triggerBody()?['reason']"
+                                    }
+                                  },
+                                  "runAfter": {
+                                    "Update_Budget": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                },
+                                "Notify_Teams": {
+                                  "type": "Http",
+                                  "inputs": {
+                                    "method": "POST",
+                                    "uri": "@parameters('teamsWebhookUri')",
+                                    "body": {
+                                      "text": "**[FinOps Budget Changed]** RG: **@{triggerBody()?['resourceGroupName']}** EUR @{outputs('Extract_Current')} → EUR @{triggerBody()?['newBudgetAmount']} | By: @{triggerBody()?['requestorEmail']} | Reason: @{triggerBody()?['reason']}"
+                                    }
+                                  },
+                                  "runAfter": {
+                                    "Update_Cosmos_Inventory": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                },
+                                "Success_Response": {
+                                  "type": "Response",
+                                  "inputs": {
+                                    "statusCode": 200,
+                                    "body": {
+                                      "status": "success",
+                                      "resourceGroup": "@triggerBody()?['resourceGroupName']",
+                                      "oldBudget": "@outputs('Extract_Current')",
+                                      "newBudget": "@triggerBody()?['newBudgetAmount']"
+                                    }
+                                  },
+                                  "runAfter": {
+                                    "Notify_Teams": [
+                                      "Succeeded"
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "outputs": {}
+                }
+              }
+            },
+            {
+              "condition": "[parameters('enableRbacAssignment')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), 'CostManagementContributor-change')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '434105ed-43f6-45c7-a02f-909b2ba83430')]",
+                "principalId": "[reference(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), '2019-05-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "logicAppId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+            },
+            "triggerUrl": {
+              "type": "string",
+              "value": "[listCallbackUrl(resourceId('Microsoft.Logic/workflows/triggers', parameters('logicAppName'), 'manual'), '2019-05-01').value]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), '2019-05-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    },
+    {
+      "condition": "[and(parameters('enableAmortizedPipeline'), parameters('enableAutoBudget'))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-backfill-logic-app",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "functionAppName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app'), '2022-09-01').outputs.functionAppName.value]"
+          },
+          "subscriptionId": {
+            "value": "[subscription().subscriptionId]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "enableRbacAssignment": {
+            "value": "[parameters('enableRbacAssignment')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "3699488381678176377"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "logicAppName": {
+              "type": "string",
+              "defaultValue": "la-finops-backfill"
+            },
+            "functionAppName": {
+              "type": "string"
+            },
+            "functionAppKey": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "subscriptionId": {
+              "type": "string",
+              "defaultValue": "[subscription().subscriptionId]"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "enableRbacAssignment": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Set to false if deployer lacks User Access Administrator role"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Logic/workflows",
+              "apiVersion": "2019-05-01",
+              "name": "[parameters('logicAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('finops-component', 'backfill-scheduler'))]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "state": "Enabled",
+                "definition": {
+                  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                  "contentVersion": "1.0.0.0",
+                  "parameters": {
+                    "functionBaseUrl": {
+                      "type": "String",
+                      "defaultValue": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01').defaultHostName)]"
+                    },
+                    "functionKey": {
+                      "type": "SecureString",
+                      "defaultValue": "[parameters('functionAppKey')]"
+                    },
+                    "subscriptionId": {
+                      "type": "String",
+                      "defaultValue": "[parameters('subscriptionId')]"
+                    }
+                  },
+                  "triggers": {
+                    "Daily_Backfill": {
+                      "type": "Recurrence",
+                      "recurrence": {
+                        "frequency": "Day",
+                        "interval": 1,
+                        "schedule": {
+                          "hours": [
+                            "7"
+                          ],
+                          "minutes": [
+                            30
+                          ]
+                        },
+                        "timeZone": "UTC"
+                      }
+                    }
+                  },
+                  "actions": {
+                    "Scan_RGs": {
+                      "type": "Http",
+                      "inputs": {
+                        "method": "GET",
+                        "uri": "@{parameters('functionBaseUrl')}/api/backfill?subscriptionId=@{parameters('subscriptionId')}&dryRun=true&code=@{parameters('functionKey')}"
+                      },
+                      "runAfter": {}
+                    },
+                    "Check_Pending": {
+                      "type": "If",
+                      "expression": {
+                        "and": [
+                          {
+                            "greater": [
+                              "@body('Scan_RGs')?['processed']",
+                              0
+                            ]
+                          }
+                        ]
+                      },
+                      "runAfter": {
+                        "Scan_RGs": [
+                          "Succeeded"
+                        ]
+                      },
+                      "actions": {
+                        "Execute_Backfill": {
+                          "type": "Http",
+                          "inputs": {
+                            "method": "GET",
+                            "uri": "@{parameters('functionBaseUrl')}/api/backfill?subscriptionId=@{parameters('subscriptionId')}&dryRun=false&code=@{parameters('functionKey')}"
+                          },
+                          "runAfter": {}
+                        },
+                        "Log_Results": {
+                          "type": "Compose",
+                          "inputs": {
+                            "backfillCompleted": true,
+                            "processedCount": "@body('Execute_Backfill')?['processed']",
+                            "timestamp": "@utcNow()"
+                          },
+                          "runAfter": {
+                            "Execute_Backfill": [
+                              "Succeeded"
+                            ]
+                          }
+                        }
+                      },
+                      "else": {
+                        "actions": {
+                          "No_Action_Needed": {
+                            "type": "Compose",
+                            "inputs": {
+                              "message": "All RGs already have budgets — no backfill needed",
+                              "timestamp": "@utcNow()"
+                            },
+                            "runAfter": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "outputs": {}
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "logicAppId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+            },
+            "logicAppName": {
+              "type": "string",
+              "value": "[parameters('logicAppName')]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), '2019-05-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-function-app')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableAutoBudget')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-event-grid",
+      "location": "[deployment().location]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "logicAppCallbackUrl": {
+            "value": "https://placeholder-configure-post-deploy"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "18199730571682221197"
+            }
+          },
+          "parameters": {
+            "logicAppCallbackUrl": {
+              "type": "string"
+            },
+            "eventSubscriptionName": {
+              "type": "string",
+              "defaultValue": "finops-rg-write-events"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.EventGrid/eventSubscriptions",
+              "apiVersion": "2024-06-01-preview",
+              "name": "[parameters('eventSubscriptionName')]",
+              "properties": {
+                "destination": {
+                  "endpointType": "WebHook",
+                  "properties": {
+                    "endpointUrl": "[parameters('logicAppCallbackUrl')]"
+                  }
+                },
+                "filter": {
+                  "includedEventTypes": [
+                    "Microsoft.Resources.ResourceWriteSuccess"
+                  ],
+                  "advancedFilters": [
+                    {
+                      "operatorType": "StringContains",
+                      "key": "subject",
+                      "values": [
+                        "/resourceGroups/"
+                      ]
+                    },
+                    {
+                      "operatorType": "StringNotContains",
+                      "key": "subject",
+                      "values": [
+                        "/providers/"
+                      ]
+                    }
+                  ]
+                },
+                "eventDeliverySchema": "EventGridSchema"
+              }
+            }
+          ],
+          "outputs": {
+            "eventSubscriptionId": {
+              "type": "string",
+              "value": "[subscriptionResourceId('Microsoft.EventGrid/eventSubscriptions', parameters('eventSubscriptionName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-auto-budget-logic-app')]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableAmortizedPipeline')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "deploy-function-app",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "storageAccountName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-storage-account'), '2022-09-01').outputs.storageAccountName.value]"
+          },
+          "cosmosEndpoint": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db'), '2022-09-01').outputs.cosmosEndpoint.value]"
+          },
+          "cosmosDatabaseName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db'), '2022-09-01').outputs.cosmosDatabaseName.value]"
+          },
+          "cosmosContainerName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db'), '2022-09-01').outputs.cosmosContainerName.value]"
+          },
+          "teamsWebhookUri": {
+            "value": "[parameters('teamsWebhookUri')]"
+          },
+          "finopsEmail": {
+            "value": "[parameters('finopsEmail')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          },
+          "enableRbacAssignment": {
+            "value": "[parameters('enableRbacAssignment')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "3555839761525009373"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "functionAppName": {
+              "type": "string",
+              "defaultValue": "[format('func-finops-amortized-{0}', uniqueString(resourceGroup().id))]"
+            },
+            "storageAccountName": {
+              "type": "string"
+            },
+            "cosmosEndpoint": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "cosmosDatabaseName": {
+              "type": "string",
+              "defaultValue": "finops"
+            },
+            "cosmosContainerName": {
+              "type": "string",
+              "defaultValue": "inventory"
+            },
+            "teamsWebhookUri": {
+              "type": "securestring",
+              "defaultValue": ""
+            },
+            "finopsEmail": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "enableRbacAssignment": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Set to false if deployer lacks User Access Administrator role"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2023-12-01",
+              "name": "[format('{0}-plan', parameters('functionAppName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "functionapp",
+              "sku": {
+                "name": "Y1",
+                "tier": "Dynamic"
+              },
+              "properties": {
+                "reserved": true
+              }
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2023-12-01",
+              "name": "[parameters('functionAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('finops-component', 'amortized-engine'))]",
+              "kind": "functionapp,linux",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('functionAppName')))]",
+                "httpsOnly": true,
+                "siteConfig": {
+                  "pythonVersion": "3.11",
+                  "linuxFxVersion": "PYTHON|3.11",
+                  "appSettings": [
+                    {
+                      "name": "AzureWebJobsStorage__accountName",
+                      "value": "[parameters('storageAccountName')]"
+                    },
+                    {
+                      "name": "AzureWebJobsStorage__blobServiceUri",
+                      "value": "[format('https://{0}.blob.core.windows.net', parameters('storageAccountName'))]"
+                    },
+                    {
+                      "name": "AzureWebJobsStorage__queueServiceUri",
+                      "value": "[format('https://{0}.queue.core.windows.net', parameters('storageAccountName'))]"
+                    },
+                    {
+                      "name": "AzureWebJobsStorage__tableServiceUri",
+                      "value": "[format('https://{0}.table.core.windows.net', parameters('storageAccountName'))]"
+                    },
+                    {
+                      "name": "FUNCTIONS_WORKER_RUNTIME",
+                      "value": "python"
+                    },
+                    {
+                      "name": "FUNCTIONS_EXTENSION_VERSION",
+                      "value": "~4"
+                    },
+                    {
+                      "name": "STORAGE_ACCOUNT_NAME",
+                      "value": "[parameters('storageAccountName')]"
+                    },
+                    {
+                      "name": "STORAGE_CONTAINER_NAME",
+                      "value": "amortized-cost-exports"
+                    },
+                    {
+                      "name": "COSMOS_ENDPOINT",
+                      "value": "[parameters('cosmosEndpoint')]"
+                    },
+                    {
+                      "name": "COSMOS_DATABASE",
+                      "value": "[parameters('cosmosDatabaseName')]"
+                    },
+                    {
+                      "name": "COSMOS_CONTAINER",
+                      "value": "[parameters('cosmosContainerName')]"
+                    },
+                    {
+                      "name": "TEAMS_WEBHOOK_URL",
+                      "value": "[parameters('teamsWebhookUri')]"
+                    },
+                    {
+                      "name": "FINOPS_EMAIL",
+                      "value": "[parameters('finopsEmail')]"
+                    },
+                    {
+                      "name": "ALERT_THRESHOLDS",
+                      "value": "50,75,90,100,110"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('functionAppName')))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enableRbacAssignment')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'StorageBlobDataOwner')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b')]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enableRbacAssignment')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'StorageQueueDataContributor')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '974c5e8b-45b9-4653-ba55-5f855dd0fb88')]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enableRbacAssignment')]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'StorageTableDataContributor')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3')]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "functionAppName": {
+              "type": "string",
+              "value": "[parameters('functionAppName')]"
+            },
+            "functionAppId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01', 'full').identity.principalId]"
+            },
+            "defaultHostName": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01').defaultHostName]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-storage-account')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "resourceGroupName": {
+      "type": "string",
+      "value": "[parameters('resourceGroupName')]"
+    },
+    "actionGroupId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-action-group'), '2022-09-01').outputs.actionGroupId.value]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-storage-account'), '2022-09-01').outputs.storageAccountName.value]"
+    },
+    "subscriptionBudgetId": {
+      "type": "string",
+      "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-subscription-budget'), '2022-09-01').outputs.budgetId.value]"
+    },
+    "policyDefinitionId": {
+      "type": "string",
+      "value": "[if(parameters('enablePolicy'), reference(subscriptionResourceId('Microsoft.Resources/deployments', 'deploy-policy-definition'), '2022-09-01').outputs.policyDefinitionId.value, 'disabled')]"
+    },
+    "autoBudgetLogicAppUrl": {
+      "type": "string",
+      "value": "[if(parameters('enableAutoBudget'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-auto-budget-logic-app'), '2022-09-01').outputs.logicAppId.value, 'disabled')]"
+    },
+    "budgetChangeLogicAppUrl": {
+      "type": "string",
+      "value": "[if(parameters('enableSelfServiceChange'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-budget-change-logic-app'), '2022-09-01').outputs.triggerUrl.value, 'disabled')]"
+    },
+    "cosmosEndpoint": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db'), '2022-09-01').outputs.cosmosEndpoint.value]"
+    },
+    "cosmosAccountName": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db'), '2022-09-01').outputs.cosmosAccountName.value]"
+    }
+  }
+}
