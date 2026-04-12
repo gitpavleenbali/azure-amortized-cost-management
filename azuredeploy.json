@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "3317326342601895751"
+      "templateHash": "1644167475482559424"
     }
   },
   "parameters": {
@@ -2373,6 +2373,9 @@
           "logAnalyticsWorkspaceId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-log-analytics'), '2022-09-01').outputs.workspaceId.value]"
           },
+          "subscriptionBudgetAmount": {
+            "value": "[parameters('subscriptionBudgetAmount')]"
+          },
           "teamsWebhookUri": {
             "value": "[parameters('teamsWebhookUri')]"
           },
@@ -2393,7 +2396,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "3245271401613382875"
+              "templateHash": "9427556502525266179"
             }
           },
           "parameters": {
@@ -2442,6 +2445,13 @@
               "defaultValue": true,
               "metadata": {
                 "description": "Set to false if deployer lacks User Access Administrator role"
+              }
+            },
+            "subscriptionBudgetAmount": {
+              "type": "int",
+              "defaultValue": 10000,
+              "metadata": {
+                "description": "Subscription budget amount (for subscription-level rollup)"
               }
             },
             "lawCustomerId": {
@@ -2576,6 +2586,14 @@
                     {
                       "name": "LAW_SHARED_KEY",
                       "value": "[parameters('lawSharedKey')]"
+                    },
+                    {
+                      "name": "SUBSCRIPTION_BUDGET_AMOUNT",
+                      "value": "[string(parameters('subscriptionBudgetAmount'))]"
+                    },
+                    {
+                      "name": "AZURE_SUBSCRIPTION_ID",
+                      "value": "[subscription().subscriptionId]"
                     },
                     {
                       "name": "WEBSITE_RUN_FROM_PACKAGE",

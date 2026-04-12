@@ -298,6 +298,7 @@ module functionApp 'modules/function-app.bicep' = if (enableAmortizedPipeline) {
     lawCustomerId: logAnalytics.outputs.customerId
     lawSharedKey: logAnalytics.outputs.primarySharedKey
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
+    subscriptionBudgetAmount: subscriptionBudgetAmount
     teamsWebhookUri: teamsWebhookUri
     finopsEmail: finopsEmail
     tags: tags

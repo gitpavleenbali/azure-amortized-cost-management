@@ -21,6 +21,9 @@ param packageUri string = 'https://raw.githubusercontent.com/gitpavleenbali/azur
 @description('Set to false if deployer lacks User Access Administrator role')
 param enableRbacAssignment bool = true
 
+@description('Subscription budget amount (for subscription-level rollup)')
+param subscriptionBudgetAmount int = 10000
+
 @description('Log Analytics workspace customer ID (for _sync_to_law)')
 param lawCustomerId string = ''
 
@@ -76,6 +79,8 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'ALERT_THRESHOLDS', value: '50,75,90,100,110' }
         { name: 'LAW_WORKSPACE_ID', value: lawCustomerId }
         { name: 'LAW_SHARED_KEY', value: lawSharedKey }
+        { name: 'SUBSCRIPTION_BUDGET_AMOUNT', value: string(subscriptionBudgetAmount) }
+        { name: 'AZURE_SUBSCRIPTION_ID', value: subscription().subscriptionId }
         { name: 'WEBSITE_RUN_FROM_PACKAGE', value: packageUri }
         { name: 'SCM_DO_BUILD_DURING_DEPLOYMENT', value: 'true' }
         { name: 'ENABLE_ORYX_BUILD', value: 'true' }

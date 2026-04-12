@@ -297,6 +297,62 @@ def _run_evaluation() -> dict:
     if alerts:
         _dispatch(alerts, now)
 
+    # ── Subscription-level rollup ─────────────────────────────
+    # Aggregate all RG costs into a subscription-level summary document
+    # so dashboards can show subscription-wide spend vs subscription budget
+    sub_id = os.environ.get("AZURE_SUBSCRIPTION_ID", "")
+    if not sub_id:
+        # Try to get from inventory
+        for entry in inventory.values():
+            if entry.get("sub"):
+                sub_id = entry["sub"]
+                break
+
+    if sub_id:
+        total_mtd = sum(rg_costs.values())
+        total_budget = sum(
+            (e.get("technical", 0) if e.get("technical", 0) > 0 else e.get("finance", 0))
+            for e in inventory.values()
+        )
+        sub_burn = total_mtd / max(day, 1)
+        sub_forecast = total_mtd + (sub_burn * max(30 - day, 0))
+        sub_pct = (total_mtd / total_budget * 100) if total_budget > 0 else 0
+        sub_forecast_pct = (sub_forecast / total_budget * 100) if total_budget > 0 else 0
+        sub_budget_from_param = int(os.environ.get("SUBSCRIPTION_BUDGET_AMOUNT", "0"))
+        effective_sub_budget = sub_budget_from_param if sub_budget_from_param > 0 else total_budget
+
+        if effective_sub_budget > 0:
+            sub_pct = (total_mtd / effective_sub_budget * 100)
+            sub_forecast_pct = (sub_forecast / effective_sub_budget * 100)
+
+        sub_status = "on_track"
+        if effective_sub_budget <= 0:
+            sub_status = "no_budget"
+        elif sub_pct >= 100:
+            sub_status = "over_budget"
+        elif sub_pct >= 80:
+            sub_status = "warning"
+        elif sub_pct >= 60:
+            sub_status = "at_risk"
+
+        _update_inventory_row(sub_id, "_subscription_rollup", {
+            "scope": "subscription",
+            "resourceGroup": "_subscription_rollup",
+            "technicalBudget": effective_sub_budget,
+            "amortizedMTD": round(total_mtd, 2),
+            "forecastEOM": round(sub_forecast, 2),
+            "burnRateDaily": round(sub_burn, 2),
+            "actualPct": round(sub_pct, 1),
+            "forecastPct": round(sub_forecast_pct, 1),
+            "complianceStatus": sub_status,
+            "lastEvaluated": now.isoformat(),
+            "evaluationDay": day,
+            "spendTier": "subscription",
+            "totalResourceGroups": len(inventory),
+            "totalResourceGroupsWithCost": len(rg_costs),
+        })
+        logging.info(f"Subscription rollup: {total_mtd:.2f} MTD / {effective_sub_budget} budget = {sub_pct:.1f}%")
+
     return {"updated": updated, "alerts_sent": len(alerts), "timestamp": now.isoformat()}
 
 
