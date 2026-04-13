@@ -2,10 +2,6 @@
 **/local.settings.json
 **/*.env
 
-# Internal planning docs (not for public repo)
-docs/.internal/
-.internal/
-
 # Build artifacts
 **/.python_packages/
 **/__pycache__/
@@ -14,6 +10,10 @@ docs/.internal/
 
 # Temp files
 C:\temp\
+temp-*.json
+functions/test-minimal/
+functions/func-minimal.zip
+functions/github-downloaded.zip
 
 # IDE
 .vscode/
