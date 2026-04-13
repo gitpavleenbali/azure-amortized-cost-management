@@ -16,7 +16,7 @@ param finopsEmail string
 param tags object = {}
 
 @description('Package URI: set to "1" for Kudu-managed deployments (CI/CD deploys code). For external URLs, provide a blob storage URL with MI auth.')
-param packageUri string = 'https://raw.githubusercontent.com/gitpavleenbali/azure-amortized-cost-management/main/functions/amortized-budget-engine.zip'
+param packageUri string = '1'
 
 @description('Set to false if deployer lacks User Access Administrator role')
 param enableRbacAssignment bool = true
@@ -189,6 +189,27 @@ resource metricsPublisherRole 'Microsoft.Authorization/roleAssignments@2022-04-0
     principalId: functionApp.identity.principalId
     principalType: 'ServicePrincipal'
   }
+}
+
+// ── ARM-native ZipDeploy — deploys Function App code directly from GitHub ──
+// This runs inside the ARM deployment engine (no ACI, no deployment script, no storage keys).
+// The ARM engine downloads the zip from GitHub and pushes it to Kudu.
+// CI workflow rebuilds this zip on Linux (Ubuntu) on every push to main.
+@description('GitHub raw URL for the Function App zip package (CI-built on Linux)')
+param codePackageUrl string = 'https://raw.githubusercontent.com/gitpavleenbali/azure-amortized-cost-management/main/functions/amortized-budget-engine.zip'
+
+resource zipDeploy 'Microsoft.Web/sites/extensions@2022-09-01' = {
+  parent: functionApp
+  name: 'ZipDeploy'
+  properties: {
+    packageUri: codePackageUrl
+  }
+  dependsOn: [
+    blobRole
+    queueRole
+    tableRole
+    accountContribRole
+  ]
 }
 
 output functionAppName string = functionApp.name

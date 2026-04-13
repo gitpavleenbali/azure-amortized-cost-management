@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "6324698924190262074"
+      "templateHash": "3133610341665976607"
     }
   },
   "parameters": {
@@ -2907,7 +2907,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "693437307005554417"
+              "templateHash": "4161068011440228201"
             }
           },
           "parameters": {
@@ -2946,7 +2946,7 @@
             },
             "packageUri": {
               "type": "string",
-              "defaultValue": "https://raw.githubusercontent.com/gitpavleenbali/azure-amortized-cost-management/main/functions/amortized-budget-engine.zip",
+              "defaultValue": "1",
               "metadata": {
                 "description": "Package URI: set to \"1\" for Kudu-managed deployments (CI/CD deploys code). For external URLs, provide a blob storage URL with MI auth."
               }
@@ -3026,6 +3026,13 @@
               "defaultValue": false,
               "metadata": {
                 "description": "Enable finance budget tracking (variance report, finance columns)"
+              }
+            },
+            "codePackageUrl": {
+              "type": "string",
+              "defaultValue": "https://raw.githubusercontent.com/gitpavleenbali/azure-amortized-cost-management/main/functions/amortized-budget-engine.zip",
+              "metadata": {
+                "description": "GitHub raw URL for the Function App zip package (CI-built on Linux)"
               }
             }
           },
@@ -3257,6 +3264,21 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Web/sites/extensions",
+              "apiVersion": "2022-09-01",
+              "name": "[format('{0}/{1}', parameters('functionAppName'), 'ZipDeploy')]",
+              "properties": {
+                "packageUri": "[parameters('codePackageUrl')]"
+              },
+              "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'StorageAccountContributor'))]",
+                "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'StorageBlobDataOwner'))]",
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]",
+                "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'StorageQueueDataContributor'))]",
+                "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'StorageTableDataContributor'))]"
               ]
             }
           ],
