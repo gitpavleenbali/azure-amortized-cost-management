@@ -110,17 +110,17 @@ Best for: Quick evaluation, dev subscriptions, hands-on learning, MVP validation
 3. Click **Review + Create**
 
 **What happens automatically:**
-- All resources deploy (~5 min): Function App, Cosmos DB, Log Analytics, 3 Logic Apps, 3 Alert Rules, Workbook, Storage, Action Group, Budget, Policy
-- Function App code loads directly from GitHub (no deployment script needed):
-  - `WEBSITE_RUN_FROM_PACKAGE` points to the committed zip in this repo
-  - Function App downloads and loads all 9 endpoints on first startup
-  - `run_on_startup=True` triggers the first evaluation immediately
-  - Calls Cost Management API for real amortized + native cost data
-  - Backfill Logic App calls `/api/backfill` on its daily schedule (scans all RGs → Cosmos DB)
-  - Data syncs to Log Analytics via DCR → powers Workbook + Alert Rules
-- **Open the Workbook dashboard ~10 minutes after deployment completes**
+- All resources deploy (~5 min): Function App, Cosmos DB, Log Analytics, 3 Logic Apps, 3 Alert Rules, Workbook, Storage, Action Group, Budget, Policy, DCR
+- Post-deploy kickstart runs automatically inside the deployment (MI-based auth — works on all subscriptions):
+  - Downloads Function App zip from GitHub → uploads to blob storage (MI auth)
+  - Sets `WEBSITE_RUN_FROM_PACKAGE` to the blob URL
+  - Creates daily amortized cost export
+  - Waits for Function App to start, then triggers `/api/backfill` (scans all RGs → Cosmos DB)
+  - Triggers `/api/evaluate` (reads cost data via API → updates inventory → syncs to Log Analytics)
+  - Wires Event Grid to Auto-Budget Logic App
+- **Open the Workbook dashboard ~10-15 minutes after deployment completes**
 
-> **No manual steps needed.** Function App code loads from GitHub, `run_on_startup=True` triggers the first evaluation, and the Cost Management API provides cost data immediately. The Backfill Logic App scans all RGs on its daily schedule.
+> **No manual steps needed.** The post-deploy script uses Managed Identity authentication for all storage operations — it works on subscriptions with `allowSharedKeyAccess=false` Azure Policy.
 
 #### Common Issues (Option 1 — Deploy to Azure)
 
@@ -325,7 +325,7 @@ azure-amortized-cost-management/
 | `enablePolicy` | `true` | Audit policy for RGs without budgets |
 | `enableRbacAssignment` | `true` | Auto-assign RBAC to managed identities |
 | `enablePrivateNetworking` | `false` | VNet + private endpoints for Cosmos/Storage |
-| `enablePostDeploy` | `false` | Advanced: optional deployment script for cost export creation. Hidden from Deploy wizard. Not needed — Function App code loads from GitHub, cost data from API. |
+| `enablePostDeploy` | `true` | Post-deploy kickstart: deploys Function App code, creates cost export, triggers backfill + evaluation. Uses MI-based storage auth — works on all subscriptions including those with `allowSharedKeyAccess=false`. |
 | `enableFinanceBudget` | `false` | Show Finance vs Technical Budget Variance section in workbook. Enable only if your finance department provides separate budget allocations per resource group. When disabled, the Variance report is hidden and finance columns are omitted from dashboards — reducing noise. |
 | `budgetStartDate` | `2026-04-01` | Budget period start date (cannot change after creation) |
 
