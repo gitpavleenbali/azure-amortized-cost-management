@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "6825497254797695450"
+      "templateHash": "4166002487750075194"
     }
   },
   "parameters": {
@@ -2504,7 +2504,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "14817059413657747036"
+              "templateHash": "14914170160374553469"
             }
           },
           "parameters": {
@@ -2713,6 +2713,10 @@
                     {
                       "name": "COST_TRACKING_SCOPE",
                       "value": "[parameters('costTrackingScope')]"
+                    },
+                    {
+                      "name": "WEBSITE_RUN_FROM_PACKAGE",
+                      "value": "[parameters('packageUri')]"
                     }
                   ]
                 }
@@ -3302,7 +3306,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "13502841915912195515"
+              "templateHash": "11405808497087878570"
             }
           },
           "parameters": {
@@ -3336,6 +3340,9 @@
               "defaultValue": "id-finops-post-deploy"
             }
           },
+          "variables": {
+            "scriptStorageName": "[take(format('stscript{0}', uniqueString(resourceGroup().id)), 24)]"
+          },
           "resources": [
             {
               "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
@@ -3360,7 +3367,7 @@
             {
               "type": "Microsoft.Storage/storageAccounts",
               "apiVersion": "2023-05-01",
-              "name": "[format('stfinopsscript{0}', uniqueString(resourceGroup().id))]",
+              "name": "[variables('scriptStorageName')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
               "kind": "StorageV2",
@@ -3377,8 +3384,8 @@
             {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
-              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', format('stfinopsscript{0}', uniqueString(resourceGroup().id)))]",
-              "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), resourceId('Microsoft.Storage/storageAccounts', format('stfinopsscript{0}', uniqueString(resourceGroup().id))), 'StorageFileContributor')]",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('scriptStorageName'))]",
+              "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName')), 'StorageFileContributor')]",
               "properties": {
                 "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0c867c2a-1d8c-454a-a3db-ab2ea1bdc8bb')]",
                 "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').principalId]",
@@ -3386,7 +3393,7 @@
               },
               "dependsOn": [
                 "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]",
-                "[resourceId('Microsoft.Storage/storageAccounts', format('stfinopsscript{0}', uniqueString(resourceGroup().id)))]"
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName'))]"
               ]
             },
             {
@@ -3408,7 +3415,8 @@
                 "timeout": "PT30M",
                 "cleanupPreference": "OnSuccess",
                 "storageAccountSettings": {
-                  "storageAccountName": "[format('stfinopsscript{0}', uniqueString(resourceGroup().id))]"
+                  "storageAccountName": "[variables('scriptStorageName')]",
+                  "storageAccountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName')), '2023-05-01').keys[0].value]"
                 },
                 "environmentVariables": [
                   {
@@ -3437,8 +3445,8 @@
               "dependsOn": [
                 "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), 'Contributor', resourceGroup().id))]",
                 "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]",
-                "[resourceId('Microsoft.Storage/storageAccounts', format('stfinopsscript{0}', uniqueString(resourceGroup().id)))]",
-                "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', format('stfinopsscript{0}', uniqueString(resourceGroup().id))), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), resourceId('Microsoft.Storage/storageAccounts', format('stfinopsscript{0}', uniqueString(resourceGroup().id))), 'StorageFileContributor'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName'))]",
+                "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName')), 'StorageFileContributor'))]"
               ]
             }
           ],

@@ -35,9 +35,11 @@ resource contributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
   }
 }
 
-// Storage account for deployment script (separate from FinOps storage to avoid key-based auth policy conflicts)
+// Storage account for deployment script (max 24 chars)
+var scriptStorageName = take('stscript${uniqueString(resourceGroup().id)}', 24)
+
 resource scriptStorage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
-  name: 'stfinopsscript${uniqueString(resourceGroup().id)}'
+  name: scriptStorageName
   location: location
   tags: tags
   kind: 'StorageV2'
@@ -84,6 +86,7 @@ resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
     cleanupPreference: 'OnSuccess'
     storageAccountSettings: {
       storageAccountName: scriptStorage.name
+      storageAccountKey: scriptStorage.listKeys().keys[0].value
     }
     environmentVariables: [
       { name: 'SUBSCRIPTION_ID', value: subscriptionId }
