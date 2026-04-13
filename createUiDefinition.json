@@ -6,7 +6,7 @@
     "config": {
       "isWizard": true,
       "basics": {
-        "description": "**Azure Amortized Cost Management** — Enterprise-grade budget management and amortized cost alerting for Azure at scale.\n\nThis platform bridges Azure's actual-cost-only budget limitation with amortized cost tracking for Reserved Instances and Savings Plans.\n\n[Learn more](https://github.com/gitpavleenbali/azure-amortized-cost-management)",
+        "description": "**Azure Amortized Cost Management** — Enterprise-grade budget management and amortized cost alerting for Azure at scale.\n\nThis platform bridges Azure's actual-cost-only budget limitation with amortized cost tracking for Reserved Instances and Savings Plans.\n\n**Subscription guidance:** This one-click deploy is designed for **dev, sandbox, or evaluation subscriptions** where Azure Policies do not restrict storage key access. For production or enterprise subscriptions with strict security policies (e.g. `allowSharedKeyAccess` deny policies, private endpoint requirements), clone the repository and use **Option 2: CI/CD Deploy** — see the [CI/CD Deployment Guide](https://github.com/gitpavleenbali/azure-amortized-cost-management/blob/main/docs/cicd-guide.md) for details.\n\n[Learn more](https://github.com/gitpavleenbali/azure-amortized-cost-management)",
         "location": {
           "label": "Region",
           "toolTip": "Azure region where all resources will be deployed.",

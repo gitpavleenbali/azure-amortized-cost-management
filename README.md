@@ -120,7 +120,19 @@ Best for: Quick evaluation, dev subscriptions, hands-on learning, MVP validation
   - Syncs to Log Analytics → powers Workbook + Alert Rules
 - **Open the Workbook dashboard ~10 minutes after deployment completes**
 
-> **Note**: The post-deploy automation requires a subscription without restrictive storage key policies. For enterprise/locked-down subscriptions, use Option B.
+> **Subscription hint**: Deploy to a dev or sandbox subscription where Azure Policies do not block storage key access. For enterprise subscriptions with strict policies, use Option B below.
+
+#### Common Issues (Option 1 — Deploy to Azure)
+
+| Symptom | Likely Cause | Quick Fix |
+|---------|-------------|----------|
+| Post-deploy script fails with `KeyBasedAuthenticationNotPermitted` | Subscription has an Azure Policy that sets `allowSharedKeyAccess=false` on all storage accounts | Use **Option B** (CI/CD) instead — the post-deploy script needs a storage account for its container, which requires key access. Production environments should use CI/CD. |
+| Function App shows 0 functions after deployment | RBAC roles haven't propagated to the storage account yet | Wait 2-3 minutes, then restart the Function App: `az functionapp restart -g <rg> -n <func>`. If still empty, verify 4 RBAC roles are scoped to the storage account (see [CI/CD Guide - Troubleshooting](docs/cicd-guide.md#troubleshooting)). |
+| Cosmos DB fails in East US | Regional capacity constraints for serverless accounts | Redeploy in **West US 2**, **West Europe**, or **Central US** — these regions have reliable serverless capacity. |
+| Deployment times out after 30 minutes | Post-deploy script waited too long for Function App to start | The infrastructure is deployed — redeploy to retry the post-deploy script, or manually run the 3-step kickstart: upload zip to blob, trigger `/api/backfill`, trigger `/api/evaluate`. |
+| Deploy button says "template not found" | GitHub CDN cache delay after a recent push | Wait 5 minutes and try again — GitHub's raw content CDN caches for a few minutes. |
+
+> **Not seeing your issue?** Check the full [Troubleshooting table](#troubleshooting--common-deployment-issues) below, or see the [CI/CD Guide](docs/cicd-guide.md#troubleshooting) for advanced debugging.
 
 ### Option B: Clone & CI/CD Deploy (Production)
 
@@ -151,6 +163,8 @@ az deployment sub create --location eastus \
 ```
 
 > **Two-phase approach**: Infrastructure deploys via Bicep (Phase 1), then Function App code deploys via your CI/CD pipeline (Phase 2). This separation gives you full control over code lifecycle, approval gates, and staging slots.
+
+> **Authentication flexibility (Option 2)**: When you clone the repo, you can configure the storage and Function App authentication to match your enterprise requirements — Managed Identity (default), connection strings, private endpoints, or any combination. The [CI/CD Guide](docs/cicd-guide.md) covers all approaches and explains which to use based on your subscription's security policies.
 
 ### Documentation Index
 
