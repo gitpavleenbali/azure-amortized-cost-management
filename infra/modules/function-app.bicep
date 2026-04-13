@@ -7,6 +7,8 @@
 param location string
 param functionAppName string = 'func-finops-amortized-${uniqueString(resourceGroup().id)}'
 param storageAccountName string
+@secure()
+param storageConnectionString string
 param cosmosEndpoint string = ''
 param cosmosDatabaseName string = 'finops'
 param cosmosContainerName string = 'inventory'
@@ -65,11 +67,10 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       pythonVersion: '3.11'
       linuxFxVersion: 'PYTHON|3.11'
       appSettings: [
-        // Managed Identity-based storage connection (no shared keys)
-        { name: 'AzureWebJobsStorage__accountName', value: storageAccountName }
-        { name: 'AzureWebJobsStorage__blobServiceUri', value: 'https://${storageAccountName}.blob.core.windows.net' }
-        { name: 'AzureWebJobsStorage__queueServiceUri', value: 'https://${storageAccountName}.queue.core.windows.net' }
-        { name: 'AzureWebJobsStorage__tableServiceUri', value: 'https://${storageAccountName}.table.core.windows.net' }
+        { name: 'AzureWebJobsStorage', value: storageConnectionString }
+        { name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING', value: storageConnectionString }
+        { name: 'WEBSITE_CONTENTSHARE', value: toLower(functionAppName) }
+        { name: 'WEBSITE_RUN_FROM_PACKAGE', value: packageUri }
         { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
         { name: 'STORAGE_ACCOUNT_NAME', value: storageAccountName }

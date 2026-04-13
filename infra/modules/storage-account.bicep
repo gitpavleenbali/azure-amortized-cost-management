@@ -55,4 +55,6 @@ resource budgetTable 'Microsoft.Storage/storageAccounts/tableServices/tables@202
 output storageAccountName string = storageAccount.name
 output storageAccountId string = storageAccount.id
 output blobEndpoint string = storageAccount.properties.primaryEndpoints.blob
+#disable-next-line outputs-should-not-contain-secrets
+output storageConnectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=${az.environment().suffixes.storage}'
 output tableEndpoint string = storageAccount.properties.primaryEndpoints.table

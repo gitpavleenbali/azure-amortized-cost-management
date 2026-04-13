@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "16756740173928652359"
+      "templateHash": "4334259555712623665"
     }
   },
   "parameters": {
@@ -773,7 +773,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "5165599553070252102"
+              "templateHash": "13250678713934488529"
             }
           },
           "parameters": {
@@ -869,6 +869,10 @@
             "blobEndpoint": {
               "type": "string",
               "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').primaryEndpoints.blob]"
+            },
+            "storageConnectionString": {
+              "type": "string",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').keys[0].value, environment().suffixes.storage)]"
             },
             "tableEndpoint": {
               "type": "string",
@@ -2454,6 +2458,9 @@
           "storageAccountName": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-storage-account'), '2022-09-01').outputs.storageAccountName.value]"
           },
+          "storageConnectionString": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-storage-account'), '2022-09-01').outputs.storageConnectionString.value]"
+          },
           "cosmosEndpoint": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db'), '2022-09-01').outputs.cosmosEndpoint.value]"
           },
@@ -2504,7 +2511,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "4999230926765087031"
+              "templateHash": "12721048465357435011"
             }
           },
           "parameters": {
@@ -2517,6 +2524,9 @@
             },
             "storageAccountName": {
               "type": "string"
+            },
+            "storageConnectionString": {
+              "type": "securestring"
             },
             "cosmosEndpoint": {
               "type": "string",
@@ -2639,20 +2649,20 @@
                   "linuxFxVersion": "PYTHON|3.11",
                   "appSettings": [
                     {
-                      "name": "AzureWebJobsStorage__accountName",
-                      "value": "[parameters('storageAccountName')]"
+                      "name": "AzureWebJobsStorage",
+                      "value": "[parameters('storageConnectionString')]"
                     },
                     {
-                      "name": "AzureWebJobsStorage__blobServiceUri",
-                      "value": "[format('https://{0}.blob.core.windows.net', parameters('storageAccountName'))]"
+                      "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                      "value": "[parameters('storageConnectionString')]"
                     },
                     {
-                      "name": "AzureWebJobsStorage__queueServiceUri",
-                      "value": "[format('https://{0}.queue.core.windows.net', parameters('storageAccountName'))]"
+                      "name": "WEBSITE_CONTENTSHARE",
+                      "value": "[toLower(parameters('functionAppName'))]"
                     },
                     {
-                      "name": "AzureWebJobsStorage__tableServiceUri",
-                      "value": "[format('https://{0}.table.core.windows.net', parameters('storageAccountName'))]"
+                      "name": "WEBSITE_RUN_FROM_PACKAGE",
+                      "value": "[parameters('packageUri')]"
                     },
                     {
                       "name": "FUNCTIONS_WORKER_RUNTIME",
