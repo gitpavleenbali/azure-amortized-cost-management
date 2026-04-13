@@ -1,16 +1,11 @@
 name: Deploy Function App Code
 
 on:
-  workflow_run:
-    workflows: ["CI — Validate & Test"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
       resource_group:
-        description: 'Resource group name'
+        description: 'Resource group name (e.g. rg-finops-e2e2)'
         required: true
-        default: 'rg-finops-governance-dev'
 
 permissions:
   id-token: write
@@ -20,7 +15,6 @@ jobs:
   deploy-function-code:
     name: Build & Deploy Function App (Blob Upload + MI Auth)
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -51,7 +45,7 @@ jobs:
 
       - name: Deploy via blob upload (MI-authenticated)
         run: |
-          RG="${{ github.event.inputs.resource_group || 'rg-finops-governance-dev' }}"
+          RG="${{ github.event.inputs.resource_group }}"
 
           # Auto-detect storage account and function app
           SA=$(az storage account list -g "$RG" --query "[0].name" -o tsv)
@@ -71,7 +65,7 @@ jobs:
             --file engine.zip --account-name "$SA" --auth-mode login --overwrite \
             --output none
 
-          # Set WEBSITE_RUN_FROM_PACKAGE to blob URL (MI reads it — no keys/SAS)
+          # Set WEBSITE_RUN_FROM_PACKAGE to blob URL (MI reads it, no keys/SAS)
           BLOB_URL="https://${SA}.blob.core.windows.net/function-releases/engine.zip"
           az functionapp config appsettings set -g "$RG" -n "$FUNC" \
             --settings "WEBSITE_RUN_FROM_PACKAGE=$BLOB_URL" --output none
@@ -80,16 +74,21 @@ jobs:
           az functionapp restart -g "$RG" -n "$FUNC" --output none
           echo "Deployed: $BLOB_URL"
 
-          # Wait and verify functions loaded
-          sleep 90
-          FUNC_COUNT=$(az functionapp function list -g "$RG" -n "$FUNC" --query "length(@)" -o tsv 2>/dev/null || echo "0")
-          echo "Functions loaded: $FUNC_COUNT/9"
+          # Verify via admin API (CLI has caching delay)
+          sleep 30
+          FUNC_KEY=$(az functionapp keys list -g "$RG" -n "$FUNC" --query "masterKey" -o tsv 2>/dev/null || echo "")
+          FUNC_HOST=$(az functionapp show -g "$RG" -n "$FUNC" --query "defaultHostName" -o tsv)
+          if [ -n "$FUNC_KEY" ]; then
+            FUNC_COUNT=$(curl -s "https://$FUNC_HOST/admin/functions?code=$FUNC_KEY" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
+            echo "Functions loaded: $FUNC_COUNT/9"
+          fi
 
-      - name: Trigger initial backfill
-        if: steps.detect.outputs.func != ''
+      - name: Trigger initial data pipeline
         run: |
-          FUNC_KEY=$(az functionapp keys list -g "${{ steps.detect.outputs.rg }}" -n "${{ steps.detect.outputs.func }}" --query "functionKeys.default" -o tsv 2>/dev/null || echo "")
-          FUNC_HOST=$(az functionapp show -g "${{ steps.detect.outputs.rg }}" -n "${{ steps.detect.outputs.func }}" --query "defaultHostName" -o tsv)
+          RG="${{ github.event.inputs.resource_group }}"
+          FUNC=$(az functionapp list -g "$RG" --query "[0].name" -o tsv)
+          FUNC_KEY=$(az functionapp keys list -g "$RG" -n "$FUNC" --query "functionKeys.default" -o tsv 2>/dev/null || echo "")
+          FUNC_HOST=$(az functionapp show -g "$RG" -n "$FUNC" --query "defaultHostName" -o tsv)
           if [ -n "$FUNC_KEY" ]; then
             echo "Triggering backfill..."
             curl -s "https://$FUNC_HOST/api/backfill?code=$FUNC_KEY" --max-time 120 || echo "Backfill triggered"
