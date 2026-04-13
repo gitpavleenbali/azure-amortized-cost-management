@@ -77,7 +77,7 @@ One deployment gives you the full FinOps cost governance stack:
 
 ### Platform Cost
 
-**~$2.50/month per subscription** — entirely serverless (Functions, Cosmos DB Serverless, Logic Apps Consumption). See [Cost Forecast](.internal/docs/cost-forecast.md) for detailed breakdown.
+**~$2.50/month per subscription** — entirely serverless (Functions, Cosmos DB Serverless, Logic Apps Consumption). See [Cost Forecast](docs/cost-forecast.md) for detailed breakdown.
 
 ---
 
@@ -89,7 +89,7 @@ One deployment gives you the full FinOps cost governance stack:
 
 **9 Function App endpoints** | **3 Logic Apps** | **3 Scheduled Query Rules** | **20+ deployed resources** | **20 Bicep modules**
 
-See [Architecture Guide](.internal/docs/technical-guide.md) for the full 6-stage data flow with diagrams.
+See [Architecture Guide](docs/technical-guide.md) for the full 6-stage data flow with diagrams.
 
 ---
 
@@ -171,9 +171,9 @@ az deployment sub create --location eastus \
 | Guide | Audience | What It Covers |
 |-------|----------|---------------|
 | [CI/CD Deployment Guide](docs/cicd-guide.md) | DevOps, Platform | Production deployment, GitHub Actions, Azure DevOps, troubleshooting, RBAC reference |
-| [Architecture Guide](.internal/docs/technical-guide.md) | Architects, DevOps | 6-stage data flow, all 9 endpoints, Cosmos schema, Mermaid diagrams |
-| [Cost Forecast](.internal/docs/cost-forecast.md) | FinOps, Finance | Per-component pricing, ~$2.50/month breakdown |
-| [Naming Conventions](.internal/docs/naming-conventions.md) | DevOps, Platform | Resource naming patterns, tag schema, environment strategy |
+| [Architecture Guide](docs/technical-guide.md) | Architects, DevOps | 6-stage data flow, all 9 endpoints, Cosmos schema, Mermaid diagrams |
+| [Cost Forecast](docs/cost-forecast.md) | FinOps, Finance | Per-component pricing, ~$2.50/month breakdown |
+| [Naming Conventions](docs/naming-conventions.md) | DevOps, Platform | Resource naming patterns, tag schema, environment strategy |
 | [Contributing](CONTRIBUTING.md) | Developers | PR workflow, code standards, test requirements |
 | [Security](SECURITY.md) | Security, Compliance | Vulnerability reporting, secrets management, RBAC |
 | [Support](SUPPORT.md) | All | Issue templates, troubleshooting, support channels |
@@ -280,9 +280,8 @@ This solution uses **Managed Identity** (zero shared keys) with 11 RBAC role ass
 azure-amortized-cost-management/
 ├── .github/workflows/ci.yml           # GitHub Actions CI (Bicep lint + pytest)
 ├── .github/workflows/deploy-function.yml  # CD — builds Linux zip, uploads to blob, restarts Function App
-├── .internal/
-│   ├── docs/                         # Architecture guide, cost forecast, naming conventions
-│   └── scripts/                      # Decommissioned scripts (now automated in Bicep/Functions)
+├── .internal/                        # Internal planning docs + decommissioned scripts (gitignored from public view)
+│   └── scripts/                      # Scripts now automated in Bicep/Functions (archived)
 ├── infra/
 │   ├── main.bicep                    # Orchestrator — deploys all 20 modules
 │   └── modules/                      # Action Group, Budget, Cosmos, DCR, Function, Logic Apps, Policy, Storage, Event Grid, Post-Deploy
@@ -298,7 +297,7 @@ azure-amortized-cost-management/
 ├── dashboards/                       # Power BI Cosmos connection templates
 ├── queries/                          # KQL (Resource Graph) + SQL (Cosmos + Snowflake)
 ├── tests/                            # pytest (14 tests) + Pester (infra validation)
-├── docs/                             # CI/CD guide, ecosystem diagram
+├── docs/                             # Architecture guide, CI/CD guide, cost forecast, naming conventions, ecosystem diagram
 ├── LICENSE                           # MIT
 ├── CONTRIBUTING.md
 ├── SECURITY.md
@@ -361,9 +360,9 @@ All resources use [Cloud Adoption Framework](https://learn.microsoft.com/azure/c
 
 | Document | Description |
 |----------|-------------|
-| [Architecture Guide](.internal/docs/technical-guide.md) | Full 6-stage data flow, Cosmos DB schema, alert framework, ITSM integration patterns |
-| [Cost Forecast](.internal/docs/cost-forecast.md) | Component-level pricing, scaling formula, ROI analysis |
-| [Naming Conventions](.internal/docs/naming-conventions.md) | Resource naming, tags, environments, thresholds, API patterns, best practices |
+| [Architecture Guide](docs/technical-guide.md) | Full 6-stage data flow, Cosmos DB schema, alert framework, ITSM integration patterns |
+| [Cost Forecast](docs/cost-forecast.md) | Component-level pricing, scaling formula, ROI analysis |
+| [Naming Conventions](docs/naming-conventions.md) | Resource naming, tags, environments, thresholds, API patterns, best practices |
 
 ---
 
@@ -402,3 +401,4 @@ This project may contain trademarks or logos for projects, products, or services
 ---
 
 `Tags: finops, cost-management, azure, bicep, budget-alerts, amortized-cost, reserved-instances, savings-plans, cosmos-db, serverless, well-architected`
+
