@@ -758,6 +758,8 @@ def _sync_inventory_to_law() -> str:
                 "spendTier": doc.get("spendTier", ""),
                 "governanceTagValue": doc.get("governanceTagValue", ""),
                 "lastEvaluated": doc.get("lastEvaluated", ""),
+                "scope": doc.get("scope", "resourceGroup"),
+                "totalResourceGroups": doc.get("totalResourceGroups", 0),
                 "TimeGenerated": datetime.now(timezone.utc).isoformat(),
             })
         if not records:

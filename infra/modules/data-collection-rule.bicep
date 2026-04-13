@@ -53,6 +53,8 @@ resource customTable 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01
         { name: 'spendTier', type: 'string' }
         { name: 'governanceTagValue', type: 'string' }
         { name: 'lastEvaluated', type: 'string' }
+        { name: 'scope', type: 'string' }
+        { name: 'totalResourceGroups', type: 'real' }
       ]
     }
     retentionInDays: 90
@@ -88,6 +90,8 @@ resource dcr 'Microsoft.Insights/dataCollectionRules@2023-03-11' = {
           { name: 'spendTier', type: 'string' }
           { name: 'governanceTagValue', type: 'string' }
           { name: 'lastEvaluated', type: 'string' }
+          { name: 'scope', type: 'string' }
+          { name: 'totalResourceGroups', type: 'real' }
         ]
       }
     }
