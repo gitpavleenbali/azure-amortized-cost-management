@@ -56,8 +56,8 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${functionAppName}-plan'
   location: location
   tags: tags
-  kind: 'functionapp'
-  sku: { name: 'Y1', tier: 'Dynamic' }
+  kind: 'linux'
+  sku: { name: 'B1', tier: 'Basic' }
   properties: { reserved: true } // Linux
 }
 
@@ -75,7 +75,6 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       linuxFxVersion: 'PYTHON|3.11'
       appSettings: [
         { name: 'AzureWebJobsStorage__accountName', value: storageAccountName }
-        { name: 'WEBSITE_RUN_FROM_PACKAGE', value: packageUri }
         { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
         { name: 'STORAGE_ACCOUNT_NAME', value: storageAccountName }
