@@ -31,16 +31,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        run: |
-          cd functions/amortized-budget-engine
-          pip install --target .python_packages/lib/site-packages -r requirements.txt --quiet
-
-      - name: Create deployment package
-        run: |
-          cd functions/amortized-budget-engine
-          zip -r ../../deploy.zip function_app.py host.json requirements.txt
-
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -58,17 +48,16 @@ jobs:
           echo "func=$FUNC" >> $GITHUB_OUTPUT
           echo "Deploying to: $FUNC in $RG"
 
+      - name: Install Azure Functions Core Tools
+        run: |
+          npm install -g azure-functions-core-tools@4 --unsafe-perm true
+
       - name: Deploy to Azure Function App
         if: steps.detect.outputs.func != ''
         run: |
-          az functionapp deploy \
-            -g "${{ steps.detect.outputs.rg }}" \
-            -n "${{ steps.detect.outputs.func }}" \
-            --src-path deploy.zip \
-            --type zip \
-            --async true
-          echo "Deploy initiated — waiting for cold start..."
-          sleep 60
+          cd functions/amortized-budget-engine
+          func azure functionapp publish "${{ steps.detect.outputs.func }}" --python --build remote
+          echo "Deploy complete!"
 
       - name: Trigger initial backfill
         if: steps.detect.outputs.func != ''
