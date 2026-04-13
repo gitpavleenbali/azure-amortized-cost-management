@@ -152,7 +152,8 @@ resource accountContribRole 'Microsoft.Authorization/roleAssignments@2022-04-01'
 
 // Grant Cosmos DB Built-in Data Contributor (data plane — read/write to inventory)
 // Cosmos DB uses its own SQL role system, NOT ARM RBAC
-resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = if (!empty(cosmosAccountName)) {
+// NOTE: always reference as 'existing' — Cosmos is deployed by cosmos-db.bicep before this module
+resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' existing = {
   name: cosmosAccountName
 }
 

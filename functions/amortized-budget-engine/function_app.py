@@ -65,6 +65,23 @@ GOVERNANCE_TAG_VALUE = os.environ.get("GOVERNANCE_TAG_VALUE", "")
 # When disabled (default), financeBudget is not synced → no zero-noise in dashboards.
 ENABLE_FINANCE_BUDGET = os.environ.get("ENABLE_FINANCE_BUDGET", "false").lower() == "true"
 
+# ── Startup Validation ────────────────────────────────────────
+def _validate_config():
+    """Validate required configuration at module load time."""
+    if not COSMOS_ENDPOINT:
+        logging.error("STARTUP: COSMOS_ENDPOINT not set — inventory read/write will fail")
+    if not STORAGE_ACCOUNT:
+        logging.error("STARTUP: STORAGE_ACCOUNT_NAME not set — cost export read will fail")
+    if not (DCR_ENDPOINT and DCR_RULE_ID) and not LAW_SHARED_KEY:
+        logging.warning("STARTUP: Neither DCR (DCR_ENDPOINT+DCR_RULE_ID) nor LAW_SHARED_KEY configured — Workbook will not receive data")
+    if DCR_ENDPOINT and DCR_RULE_ID:
+        logging.info("STARTUP: LAW sync via DCR (Managed Identity) ✓")
+    elif LAW_SHARED_KEY:
+        logging.info("STARTUP: LAW sync via shared key (legacy) ✓")
+    logging.info(f"STARTUP: costTrackingScope={COST_TRACKING_SCOPE}, financeBudget={'enabled' if ENABLE_FINANCE_BUDGET else 'disabled'}")
+
+_validate_config()
+
 # ── Budget Alert Notification Framework — Tiered Thresholds ──
 # Thresholds scale by 3-month avg spend. Smaller RGs tolerate more variance.
 # Each tier: {"headup": %, "warning": %, "critical": %}

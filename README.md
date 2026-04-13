@@ -329,7 +329,46 @@ azure-amortized-cost-management/
 | `enableRbacAssignment` | `true` | Auto-assign RBAC to managed identities |
 | `enablePrivateNetworking` | `false` | VNet + private endpoints for Cosmos/Storage |
 | `enablePostDeploy` | `true` | Run the post-deploy automation script (code deploy, cost export, backfill). Set to `false` for restricted subscriptions that block storage key access — use CI/CD (Option B) instead. |
+| `enableFinanceBudget` | `false` | Show Finance vs Technical Budget Variance section in workbook. Enable only if your finance department provides separate budget allocations per resource group. When disabled, the Variance report is hidden and finance columns are omitted from dashboards — reducing noise. |
 | `budgetStartDate` | `2026-04-01` | Budget period start date (cannot change after creation) |
+
+### Cost Tracking Scope — How It Works
+
+The `costTrackingScope` parameter controls *what level* of cost data is tracked and displayed:
+
+| Scope | Per-RG Tracking | Subscription Rollup | Best For |
+|-------|:-:|:-:|---|
+| `resourceGroup` | Yes | No | Teams who only care about individual RG budgets |
+| `subscription` | Yes | Yes (rollup only) | Finance teams who need a subscription-wide view |
+| `both` (default) | Yes | Yes | Full visibility — per-RG details + subscription summary |
+
+> **Important**: Per-RG data is always collected regardless of scope. The `costTrackingScope` controls whether the subscription-level rollup row is also generated. The Workbook dashboard always shows both views when data is available.
+
+### Feature Scope Matrix — What Applies Where
+
+Not all features apply at both levels. Here's the breakdown:
+
+| Feature | Scope | How It Works |
+|---------|-------|-------------|
+| **Auto-Budget** (Event Grid + Logic App) | **Resource Group** | Triggers when a *new RG is created*. Assigns a default EUR 100 Azure budget to that RG. Does NOT create subscription-level budgets. |
+| **Backfill** (`/api/backfill`) | **Resource Group** | Scans *existing RGs*, creates an Azure budget on each one that doesn't have one, seeds a Cosmos DB inventory row. Does NOT modify the subscription budget. |
+| **Budget Change** (`/api/update-budget`) | **Resource Group** | Updates the technical budget amount for a *single RG* in Cosmos DB. Called by the self-service Logic App after a user requests a change. |
+| **Subscription Budget** (Bicep) | **Subscription** | Created once by Bicep at deploy time. Uses Azure native `Microsoft.Consumption/budgets` with 5 escalating thresholds (50/75/90/100/110%). |
+| **Daily Evaluation** (timer + `/api/evaluate`) | **Both** | Reads amortized cost per RG (from export CSV or Cost Management API), updates each RG row in Cosmos DB, then generates a subscription-level rollup row summing all RG costs. |
+| **Finance Budget Ingestion** (blob trigger) | **Resource Group** | Finance drops a CSV into `finance-budgets/` container → Function auto-ingests per-RG finance budget amounts. No subscription-level finance budget. |
+| **Quarterly Recalculation** (timer) | **Resource Group** | Recalculates technical budgets for each RG based on last month's amortized actuals (only if drift > 30%). |
+| **Azure Workbook** | **Both** | Subscription Summary tile shows rollup. All other tiles (Inventory, Compliance, Top Spenders, Burn Rate) show per-RG data. |
+| **Alert Rules** (Scheduled Query) | **Resource Group** | KQL queries fire on per-RG compliance status changes (headup/warning/critical). |
+| **Policy** (AuditIfNotExists) | **Resource Group** | Flags individual RGs that don't have an Azure budget assigned. |
+
+### Finance Budget Toggle
+
+The `enableFinanceBudget` parameter (default: `false`) controls the dual-budget model:
+
+- **Disabled** (default): The workbook only shows technical budgets and spend. The "Finance vs Technical Budget Variance" section is completely hidden. No zero-value finance columns in the dashboard.
+- **Enabled**: The workbook shows a "Finance vs Technical Budget Variance" section comparing finance-approved budgets against actual spend. Finance budgets are ingested by dropping a CSV into the `finance-budgets/` Storage container (columns: `SubscriptionId`, `ResourceGroup`, `FinanceBudget`, `CostCenter`).
+
+> **When to enable**: Only if your finance department provides separate budget allocations per resource group. If you only use Azure native budgets (technical budgets), leave this disabled — otherwise every RG shows EUR 0 in the finance column, which is noise.
 
 ### Resource Naming
 

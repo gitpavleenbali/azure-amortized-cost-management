@@ -59,6 +59,34 @@ resource budgetTable 'Microsoft.Storage/storageAccounts/tableServices/tables@202
   name: 'finopsInventory'
 }
 
+// Lifecycle policy: auto-delete old cost export blobs after 90 days
+resource lifecyclePolicy 'Microsoft.Storage/storageAccounts/managementPolicies@2023-05-01' = {
+  parent: storageAccount
+  name: 'default'
+  properties: {
+    policy: {
+      rules: [
+        {
+          name: 'cleanup-old-exports'
+          enabled: true
+          type: 'Lifecycle'
+          definition: {
+            filters: {
+              blobTypes: [ 'blockBlob' ]
+              prefixMatch: [ 'amortized-cost-exports/' ]
+            }
+            actions: {
+              baseBlob: {
+                delete: { daysAfterModificationGreaterThan: 90 }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
 output storageAccountName string = storageAccount.name
 output storageAccountId string = storageAccount.id
 output blobEndpoint string = storageAccount.properties.primaryEndpoints.blob

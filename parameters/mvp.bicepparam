@@ -11,6 +11,7 @@ param enableAutoBudget = true                          // Core MVP feature — a
 param enableSelfServiceChange = true                   // Core MVP feature — self-service budget changes
 param enablePolicy = false                             // Requires Resource Policy Contributor — Admin enables later
 param enableRbacAssignment = false                     // Requires User Access Administrator — Admin assigns post-deploy
+param enableFinanceBudget = false                      // Enable if finance provides separate budgets per RG
 param tags = {
   'finops-platform': 'budget-alerts-automation'
   'managed-by': 'finops-iac'

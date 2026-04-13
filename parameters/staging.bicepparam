@@ -9,6 +9,9 @@ param subscriptionBudgetAmount = 25000
 param enableAmortizedPipeline = false  // Enable after dev validation
 param enableAutoBudget = true
 param enableSelfServiceChange = true
+param enablePolicy = true
+param enableRbacAssignment = true
+param enableFinanceBudget = false      // Enable if finance provides separate budgets per RG
 param tags = {
   'finops-platform': 'budget-alerts-automation'
   'managed-by': 'finops-iac'
