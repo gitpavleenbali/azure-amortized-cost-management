@@ -1,0 +1,80 @@
+name: Deploy Function App Code
+
+on:
+  workflow_run:
+    workflows: ["CI — Validate & Test"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      resource_group:
+        description: 'Resource group name'
+        required: true
+        default: 'rg-finops-governance-dev'
+      function_app_name:
+        description: 'Function App name (leave empty for auto-detect)'
+        required: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-function-code:
+    name: Build & Deploy Function App
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd functions/amortized-budget-engine
+          pip install --target .python_packages/lib/site-packages -r requirements.txt --quiet
+
+      - name: Create deployment package
+        run: |
+          cd functions/amortized-budget-engine
+          zip -r ../../deploy.zip function_app.py host.json requirements.txt .python_packages/
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Detect Function App
+        id: detect
+        run: |
+          RG="${{ github.event.inputs.resource_group || 'rg-finops-governance-dev' }}"
+          FUNC="${{ github.event.inputs.function_app_name }}"
+          if [ -z "$FUNC" ]; then
+            FUNC=$(az functionapp list -g "$RG" --query "[0].name" -o tsv 2>/dev/null || echo "")
+          fi
+          echo "rg=$RG" >> $GITHUB_OUTPUT
+          echo "func=$FUNC" >> $GITHUB_OUTPUT
+          echo "Deploying to: $FUNC in $RG"
+
+      - name: Deploy to Azure Function App
+        if: steps.detect.outputs.func != ''
+        run: |
+          az functionapp deployment source config-zip \
+            -g "${{ steps.detect.outputs.rg }}" \
+            -n "${{ steps.detect.outputs.func }}" \
+            --src deploy.zip
+          echo "Deployed successfully!"
+
+      - name: Trigger initial backfill
+        if: steps.detect.outputs.func != ''
+        run: |
+          FUNC_KEY=$(az functionapp keys list -g "${{ steps.detect.outputs.rg }}" -n "${{ steps.detect.outputs.func }}" --query "functionKeys.default" -o tsv 2>/dev/null || echo "")
+          FUNC_HOST=$(az functionapp show -g "${{ steps.detect.outputs.rg }}" -n "${{ steps.detect.outputs.func }}" --query "defaultHostName" -o tsv)
+          if [ -n "$FUNC_KEY" ]; then
+            echo "Triggering backfill..."
+            curl -s "https://$FUNC_HOST/api/backfill?code=$FUNC_KEY" --max-time 120 || echo "Backfill triggered"
+            echo "Triggering evaluate..."
+            curl -s "https://$FUNC_HOST/api/evaluate?code=$FUNC_KEY" --max-time 120 || echo "Evaluate triggered"
+          fi
