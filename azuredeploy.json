@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "7813965649605498158"
+      "templateHash": "18350007618377245450"
     }
   },
   "parameters": {
@@ -228,6 +228,13 @@
       "defaultValue": false,
       "metadata": {
         "description": "Enable private networking — deploys VNet, private endpoints for Cosmos DB & Storage, and Function App VNet integration"
+      }
+    },
+    "enablePostDeploy": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable post-deploy automation script (code deploy + kickstart). Disable if subscription has restrictive storage key policies — use CI/CD instead."
       }
     },
     "vnetName": {
@@ -3190,7 +3197,7 @@
       ]
     },
     {
-      "condition": "[parameters('enableAmortizedPipeline')]",
+      "condition": "[and(parameters('enableAmortizedPipeline'), parameters('enablePostDeploy'))]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "deploy-post-deploy-kickstart",
@@ -3374,7 +3381,7 @@
       ]
     },
     {
-      "condition": "[parameters('enableAmortizedPipeline')]",
+      "condition": "[and(parameters('enableAmortizedPipeline'), parameters('enablePostDeploy'))]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "deploy-post-deploy-sub-role",

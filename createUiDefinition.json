@@ -198,6 +198,21 @@
               ]
             },
             "visible": true
+          },
+          {
+            "name": "enablePostDeploy",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Post-Deploy Automation",
+            "defaultValue": "Enabled",
+            "toolTip": "Automatically deploy Function App code, create cost export, and trigger initial data pipeline. Disable this if your subscription has Azure Policies that block storage key access (allowSharedKeyAccess=false). When disabled, deploy Function App code via CI/CD — see the CI/CD Guide in the repository.",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                { "label": "Enabled", "description": "Recommended for dev/sandbox subscriptions. Auto-deploys code and triggers data pipeline.", "value": true },
+                { "label": "Disabled", "description": "For restricted subscriptions. Deploy code via CI/CD (see docs/cicd-guide.md).", "value": false }
+              ]
+            },
+            "visible": true
           }
         ]
       },
@@ -501,6 +516,7 @@
       "enablePolicy": "[steps('features').enablePolicy]",
       "enableAmortizedPipeline": "[steps('features').enableAmortizedPipeline]",
       "enableRbacAssignment": "[steps('features').enableRbacAssignment]",
+      "enablePostDeploy": "[steps('features').enablePostDeploy]",
       "enablePrivateNetworking": "[steps('networking').enablePrivateNetworking]",
       "vnetName": "[steps('networking').vnetName]",
       "vnetAddressPrefix": "[steps('networking').vnetAddressPrefix]",

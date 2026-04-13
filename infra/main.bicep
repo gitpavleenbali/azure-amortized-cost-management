@@ -115,6 +115,9 @@ param postDeployIdentityNameOverride string = ''
 @description('Enable private networking — deploys VNet, private endpoints for Cosmos DB & Storage, and Function App VNet integration')
 param enablePrivateNetworking bool = false
 
+@description('Enable post-deploy automation script (code deploy + kickstart). Disable if subscription has restrictive storage key policies — use CI/CD instead.')
+param enablePostDeploy bool = true
+
 @description('VNet name (only used when enablePrivateNetworking = true)')
 param vnetName string = 'vnet-finops-governance'
 
@@ -356,7 +359,7 @@ module functionApp 'modules/function-app.bicep' = if (enableAmortizedPipeline) {
 // Downloads Function App zip from GitHub → uploads to blob storage →
 // sets WEBSITE_RUN_FROM_PACKAGE → creates cost export → triggers backfill + evaluate.
 // For production/restricted environments, use CI/CD instead (see docs/cicd-guide.md).
-module postDeploy 'modules/post-deploy.bicep' = if (enableAmortizedPipeline) {
+module postDeploy 'modules/post-deploy.bicep' = if (enableAmortizedPipeline && enablePostDeploy) {
   name: 'deploy-post-deploy-kickstart'
   scope: rg
   params: {
@@ -376,7 +379,7 @@ module postDeploy 'modules/post-deploy.bicep' = if (enableAmortizedPipeline) {
 }
 
 // ── Module 9c: Post-Deploy Subscription Role (Cost Management) ─
-module postDeploySubRole 'modules/post-deploy-sub-role.bicep' = if (enableAmortizedPipeline) {
+module postDeploySubRole 'modules/post-deploy-sub-role.bicep' = if (enableAmortizedPipeline && enablePostDeploy) {
   name: 'deploy-post-deploy-sub-role'
   params: {
     principalId: postDeploy.outputs.postDeployIdentityPrincipalId
