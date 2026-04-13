@@ -321,7 +321,6 @@ module functionApp 'modules/function-app.bicep' = if (enableAmortizedPipeline) {
     location: location
     functionAppName: functionAppComputedName
     storageAccountName: storageAccount.outputs.storageAccountName
-    storageConnectionString: storageAccount.outputs.storageConnectionString
     cosmosEndpoint: cosmosDb.outputs.cosmosEndpoint
     cosmosDatabaseName: cosmosDb.outputs.cosmosDatabaseName
     cosmosContainerName: cosmosDb.outputs.cosmosContainerName

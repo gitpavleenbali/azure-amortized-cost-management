@@ -7,8 +7,6 @@
 param location string
 param functionAppName string = 'func-finops-amortized-${uniqueString(resourceGroup().id)}'
 param storageAccountName string
-@secure()
-param storageConnectionString string
 param cosmosEndpoint string = ''
 param cosmosDatabaseName string = 'finops'
 param cosmosContainerName string = 'inventory'
@@ -17,8 +15,8 @@ param teamsWebhookUri string = ''
 param finopsEmail string
 param tags object = {}
 
-@description('URL to the Function App zip package for automated deployment')
-param packageUri string = 'https://raw.githubusercontent.com/gitpavleenbali/azure-amortized-cost-management/main/functions/amortized-budget-engine.zip'
+@description('Package deployment mode: "1" for zip deploy, or a full URL to a zip package')
+param packageUri string = '1'
 
 @description('Set to false if deployer lacks User Access Administrator role')
 param enableRbacAssignment bool = true
@@ -67,9 +65,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
       pythonVersion: '3.11'
       linuxFxVersion: 'PYTHON|3.11'
       appSettings: [
-        { name: 'AzureWebJobsStorage', value: storageConnectionString }
-        { name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING', value: storageConnectionString }
-        { name: 'WEBSITE_CONTENTSHARE', value: toLower(functionAppName) }
+        { name: 'AzureWebJobsStorage__accountName', value: storageAccountName }
         { name: 'WEBSITE_RUN_FROM_PACKAGE', value: packageUri }
         { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'python' }
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
@@ -92,9 +88,15 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   }
 }
 
+// Reference the storage account for scoping RBAC assignments
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
+  name: storageAccountName
+}
+
 // Grant Storage Blob Data Owner (read exports + Function runtime)
 resource blobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (enableRbacAssignment) {
-  name: guid(functionApp.id, 'StorageBlobDataOwner')
+  name: guid(storageAccount.id, functionApp.id, 'StorageBlobDataOwner')
+  scope: storageAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b')
     principalId: functionApp.identity.principalId
@@ -104,7 +106,8 @@ resource blobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (ena
 
 // Grant Storage Queue Data Contributor (Function runtime needs queues)
 resource queueRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (enableRbacAssignment) {
-  name: guid(functionApp.id, 'StorageQueueDataContributor')
+  name: guid(storageAccount.id, functionApp.id, 'StorageQueueDataContributor')
+  scope: storageAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '974c5e8b-45b9-4653-ba55-5f855dd0fb88')
     principalId: functionApp.identity.principalId
@@ -114,9 +117,21 @@ resource queueRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (en
 
 // Grant Storage Table Data Contributor (Function runtime needs tables)
 resource tableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (enableRbacAssignment) {
-  name: guid(functionApp.id, 'StorageTableDataContributor')
+  name: guid(storageAccount.id, functionApp.id, 'StorageTableDataContributor')
+  scope: storageAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3')
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Grant Storage Account Contributor (Function runtime needs file share management)
+resource accountContribRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (enableRbacAssignment) {
+  name: guid(storageAccount.id, functionApp.id, 'StorageAccountContributor')
+  scope: storageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab')
     principalId: functionApp.identity.principalId
     principalType: 'ServicePrincipal'
   }
