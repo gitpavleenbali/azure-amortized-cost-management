@@ -39,7 +39,7 @@ jobs:
       - name: Create deployment package
         run: |
           cd functions/amortized-budget-engine
-          zip -r ../../deploy.zip function_app.py host.json requirements.txt .python_packages/
+          zip -r ../../deploy.zip function_app.py host.json requirements.txt
 
       - name: Azure Login
         uses: azure/login@v2
@@ -61,11 +61,14 @@ jobs:
       - name: Deploy to Azure Function App
         if: steps.detect.outputs.func != ''
         run: |
-          az functionapp deployment source config-zip \
+          az functionapp deploy \
             -g "${{ steps.detect.outputs.rg }}" \
             -n "${{ steps.detect.outputs.func }}" \
-            --src deploy.zip
-          echo "Deployed successfully!"
+            --src-path deploy.zip \
+            --type zip \
+            --async true
+          echo "Deploy initiated — waiting for cold start..."
+          sleep 60
 
       - name: Trigger initial backfill
         if: steps.detect.outputs.func != ''

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "3157436139380476193"
+      "templateHash": "16756740173928652359"
     }
   },
   "parameters": {
@@ -2504,7 +2504,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "17233051598128736507"
+              "templateHash": "4999230926765087031"
             }
           },
           "parameters": {
@@ -2717,6 +2717,14 @@
                     {
                       "name": "AzureWebJobsFeatureFlags",
                       "value": "EnableWorkerIndexing"
+                    },
+                    {
+                      "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+                      "value": "true"
+                    },
+                    {
+                      "name": "ENABLE_ORYX_BUILD",
+                      "value": "true"
                     }
                   ]
                 }
