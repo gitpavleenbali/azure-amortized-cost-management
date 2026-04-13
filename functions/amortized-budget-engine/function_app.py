@@ -729,8 +729,8 @@ def _sync_inventory_to_law() -> str:
     """Push all Cosmos DB inventory records to Log Analytics for Azure Workbook.
     Prefers DCR/Logs Ingestion API (MI-authenticated, no shared keys).
     Falls back to HTTP Data Collector API (shared key) if DCR not configured."""
-    if not LAW_WORKSPACE_ID:
-        return "skipped (LAW_WORKSPACE_ID not set)"
+    if not DCR_ENDPOINT and not LAW_WORKSPACE_ID:
+        return "skipped (neither DCR nor LAW configured)"
     try:
         cosmos_container = _get_cosmos_container()
         records = []
