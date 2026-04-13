@@ -69,8 +69,8 @@ One deployment gives you the full FinOps cost governance stack:
 | **Finance vs Technical budgets** | Compare finance-approved budgets against Azure actual spend — executive variance view |
 | **Configurable governance alerts** | Immediate notification when any configured tag value is detected (e.g., cost category flags) |
 | **FinOps Inventory** | Cosmos DB single source of truth — budget, spend, forecast, compliance per resource group |
-| **Azure Workbook dashboard** | Real-time compliance dashboard with pie charts, heatmaps, and color-coded inventory |
-| **Power BI templates** | Ready-to-use Power Query + DAX for executive dashboards |
+| **Azure Workbook dashboard** | Real-time compliance dashboard with pie charts, heatmaps, and color-coded inventory (deployed automatically) |
+| **Power BI templates** | Ready-to-use Power Query + DAX for executive dashboards via Cosmos DB. See [Visualization Guide](docs/visualization.md) |
 | **Audit policy** | AuditIfNotExists policy flags any RG without a budget |
 | **Quarterly recalculation** | Auto-adjusts budgets based on last quarter's actuals (only if drift > 30%) |
 | **REST API** | `/api/inventory` and `/api/variance` endpoints for custom integrations |
@@ -171,6 +171,7 @@ az deployment sub create --location eastus \
 | Guide | Audience | What It Covers |
 |-------|----------|---------------|
 | [CI/CD Deployment Guide](docs/cicd-guide.md) | DevOps, Platform | Production deployment, GitHub Actions, Azure DevOps, troubleshooting, RBAC reference |
+| [Visualization Guide](docs/visualization.md) | FinOps, Analysts, Executives | Azure Workbook (auto-deployed) + Power BI with Cosmos DB setup, DAX measures, query templates |
 | [Architecture Guide](docs/technical-guide.md) | Architects, DevOps | 6-stage data flow, all 9 endpoints, Cosmos schema, Mermaid diagrams |
 | [Cost Forecast](docs/cost-forecast.md) | FinOps, Finance | Per-component pricing, ~$2.50/month breakdown |
 | [Naming Conventions](docs/naming-conventions.md) | DevOps, Platform | Resource naming patterns, tag schema, environment strategy |
