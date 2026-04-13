@@ -363,12 +363,7 @@ Any RG with a configured governance tag value triggers an immediate Governance n
 | `la-finops-budget-change` | Cost Management Contributor | Subscription | Update budgets on existing RGs |
 | `la-finops-backfill` | Reader | Subscription | Enumerate resource groups for backfill |
 
-### Post-Deploy Identity (User-Assigned MI)
-
-| Role | Scope | Purpose |
-|------|-------|---------|
-| Contributor | Resource Group | Upload Function App code, configure resources |
-| Cost Management Contributor | Subscription | Create cost export |
+> **Note**: The post-deploy deployment script and its User-Assigned Managed Identity are no longer used by default. Function App code loads directly from GitHub via `WEBSITE_RUN_FROM_PACKAGE`, and cost data is queried via the Cost Management API. The post-deploy Bicep module remains available for advanced CLI users who need to auto-create cost exports on unrestricted subscriptions.
 
 ---
 

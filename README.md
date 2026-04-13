@@ -120,19 +120,18 @@ Best for: Quick evaluation, dev subscriptions, hands-on learning, MVP validation
   - Data syncs to Log Analytics via DCR → powers Workbook + Alert Rules
 - **Open the Workbook dashboard ~10 minutes after deployment completes**
 
-> **Post-Deploy Automation**: Leave at **Disabled** (default). Function App code loads from GitHub automatically. The post-deploy script is only needed if you want to auto-create a cost export — but the Cost Management API fallback provides immediate data without it. Enable only on dev/sandbox subscriptions without storage key restrictions.
+> **No manual steps needed.** Function App code loads from GitHub, `run_on_startup=True` triggers the first evaluation, and the Cost Management API provides cost data immediately. The Backfill Logic App scans all RGs on its daily schedule.
 
 #### Common Issues (Option 1 — Deploy to Azure)
 
 | Symptom | Likely Cause | Quick Fix |
 |---------|-------------|----------|
-| Post-deploy script fails with `KeyBasedAuthenticationNotPermitted` | Subscription has an Azure Policy blocking storage key access | Leave **Post-Deploy Automation = Disabled** (the default). Function App code loads from GitHub automatically — no deployment script needed. |
 | Function App shows 0 functions after deployment | RBAC roles haven't propagated to the storage account yet | Wait 2-3 minutes, then restart the Function App: `az functionapp restart -g <rg> -n <func>`. If still empty, verify 4 RBAC roles are scoped to the storage account (see [CI/CD Guide - Troubleshooting](docs/cicd-guide.md#troubleshooting)). |
 | Cosmos DB Data Explorer shows `principal does not have required RBAC permissions` | Subscription policy sets `disableLocalAuth=true` on Cosmos DB, blocking key-based portal access | Assign yourself the Cosmos DB SQL Data Contributor role: `az cosmosdb sql role assignment create --account-name <cosmos> --resource-group <rg> --scope "/" --principal-id <your-object-id> --role-definition-id "<cosmos-id>/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002"` |
 | Cosmos DB fails in East US | Regional capacity constraints for serverless accounts | Redeploy in **West US 2**, **West Europe**, or **Central US** — these regions have reliable serverless capacity. |
 | Workbook shows `Failed to resolve column` errors | Data hasn't been synced to Log Analytics yet | Trigger evaluate: call `/api/evaluate` with function key. Data appears in the workbook within 2-5 minutes after the first successful DCR sync. |
-| Cost export creation fails with key auth error | Azure Cost Management Export service requires `allowSharedKeyAccess=true` on storage | Not required — the Cost Management API fallback queries cost data directly. To create exports on restricted subscriptions, do it manually in the portal (Cost Management → Exports). |
-| Deployment times out after 30 minutes | Post-deploy script took too long (if enabled) | Leave Post-Deploy Automation at Disabled (default). Function App code loads from GitHub directly. If you enabled post-deploy and it failed, the infrastructure is still deployed — just restart the Function App. |
+| Cost export creation fails with key auth error | Azure Cost Management Export requires storage key access | Not needed — the Cost Management API provides amortized + native cost data directly. To create exports optionally, do it manually in the portal (Cost Management → Exports). |
+| Deployment times out after 30 minutes | Cosmos DB or region capacity issue | Check Cosmos DB provisioning state. If failed, delete the Cosmos account and redeploy in a different region (West US 2 or West Europe recommended). |
 | Deploy button says "template not found" | GitHub CDN cache delay after a recent push | Wait 5 minutes and try again — GitHub's raw content CDN caches for a few minutes. |
 
 > **Not seeing your issue?** Check the full [Troubleshooting table](#troubleshooting--common-deployment-issues) below, or see the [CI/CD Guide](docs/cicd-guide.md#troubleshooting) for advanced debugging.
@@ -250,13 +249,12 @@ If your deployment fails, check this table before troubleshooting further:
 | **Cosmos DB stuck** | "terminal provisioning state 'Failed'" | Previous failed Cosmos account blocking redeploy | Delete the failed account: `az cosmosdb delete --name <name> -g <rg> --yes` |
 | **Budget start date** | "Start date of budgets cannot be updated" | Budget already exists with a different start date | Delete the existing budget: `az consumption budget delete --budget-name <name>` |
 | **Alert rules** | "Failed to resolve table FinOpsInventory_CL" | Custom log table doesn't exist yet at deploy time | Already handled via `skipQueryValidation: true` — redeploy if using old template version |
-| **Storage key policy** | "Key based authentication is not permitted" | Subscription policy blocks shared key access | Deployment uses a dedicated script storage account — if still blocked, check Azure Policy |
+| **Storage key policy** | "Key based authentication is not permitted" | Subscription policy blocks shared key access | Not an issue — Function App code loads from GitHub, cost data from API. No storage keys needed for core functionality. |
 | **Resource provider** | "ResourceProviderNotRegistered" | Required provider not registered on subscription | Run `az provider register --namespace <provider>` (see Prerequisites) |
 | **RBAC insufficient** | "Authorization failed" | Deployer lacks User Access Administrator role | Set `enableRbacAssignment = Disabled` in Feature Toggles, then assign roles manually |
 | **Function App empty** | Only 5 resources deployed | Feature Toggles were set to Disabled | Ensure all toggles show "Enabled" in the wizard (they default to Enabled) |
-| **Event Grid webhook** | "Webhook validation handshake failed" | Event Grid requires a valid endpoint URL | Already handled — post-deploy script wires the real Logic App URL |
+| **Event Grid webhook** | "Webhook validation handshake failed" | Event Grid requires a valid endpoint URL | Event Grid validates on first RG creation. If auto-budget doesn't trigger, check the Logic App callback URL. |
 | **Naming collision** | "already taken" | Globally unique name conflict (Storage, Cosmos, Function App) | Use the Resource Naming tab to specify custom names |
-| **Post-deploy timeout** | Deployment script exceeded 30 minutes | Function App code build took too long | Redeploy — the Function App infrastructure is already created; post-deploy will retry |
 
 ### Identity & Access Management (IAM)
 
@@ -268,7 +266,6 @@ This solution uses **Managed Identity** (zero shared keys) with 11 RBAC role ass
 | Auto-Budget Logic App (System MSI) | Cost Management Contributor (subscription scope) | Automatic via Bicep |
 | Budget Change Logic App (System MSI) | Cost Management Contributor (subscription scope) | Automatic via Bicep |
 | Backfill Logic App (System MSI) | Reader (subscription scope) | Automatic via Bicep |
-| Post-Deploy Identity (User MSI) | Contributor (RG), Cost Management Contributor (subscription) | Automatic via Bicep |
 
 **If your organisation requires manual RBAC approval**: set `enableRbacAssignment = Disabled` during deployment, then assign the roles listed above through your ITSM/approval workflow.
 
@@ -328,7 +325,7 @@ azure-amortized-cost-management/
 | `enablePolicy` | `true` | Audit policy for RGs without budgets |
 | `enableRbacAssignment` | `true` | Auto-assign RBAC to managed identities |
 | `enablePrivateNetworking` | `false` | VNet + private endpoints for Cosmos/Storage |
-| `enablePostDeploy` | `false` | Optional post-deploy script (creates cost export + wires Event Grid). NOT needed for code deployment — code loads from GitHub automatically. Enable only on dev/sandbox subscriptions without storage key restrictions. |
+| `enablePostDeploy` | `false` | Advanced: optional deployment script for cost export creation. Hidden from Deploy wizard. Not needed — Function App code loads from GitHub, cost data from API. |
 | `enableFinanceBudget` | `false` | Show Finance vs Technical Budget Variance section in workbook. Enable only if your finance department provides separate budget allocations per resource group. When disabled, the Variance report is hidden and finance columns are omitted from dashboards — reducing noise. |
 | `budgetStartDate` | `2026-04-01` | Budget period start date (cannot change after creation) |
 
