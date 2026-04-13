@@ -49,21 +49,19 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   tags: tags
   kind: 'functionapp'
   sku: { name: 'Y1', tier: 'Dynamic' }
-  properties: { reserved: true } // Linux
+  properties: { reserved: false } // Windows
 }
 
 resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: functionAppName
   location: location
   tags: union(tags, { 'finops-component': 'amortized-engine' })
-  kind: 'functionapp,linux'
+  kind: 'functionapp'
   identity: { type: 'SystemAssigned' }
   properties: {
     serverFarmId: hostingPlan.id
     httpsOnly: true
     siteConfig: {
-      pythonVersion: '3.11'
-      linuxFxVersion: 'PYTHON|3.11'
       appSettings: [
         // Managed Identity-based storage connection (no shared keys)
         { name: 'AzureWebJobsStorage__accountName', value: storageAccountName }
@@ -86,7 +84,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'AZURE_SUBSCRIPTION_ID', value: subscription().subscriptionId }
         { name: 'COST_TRACKING_SCOPE', value: costTrackingScope }
         { name: 'AzureWebJobsFeatureFlags', value: 'EnableWorkerIndexing' }
-        { name: 'PYTHON_ISOLATE_WORKER_DEPENDENCIES', value: '0' }
+        { name: 'WEBSITE_RUN_FROM_PACKAGE', value: packageUri }
       ]
     }
   }

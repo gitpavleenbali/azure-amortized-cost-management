@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "17083556758686788394"
+      "templateHash": "2334222038333913037"
     }
   },
   "parameters": {
@@ -2504,7 +2504,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "5174418660002944083"
+              "templateHash": "13574800144092435398"
             }
           },
           "parameters": {
@@ -2618,7 +2618,7 @@
                 "tier": "Dynamic"
               },
               "properties": {
-                "reserved": true
+                "reserved": false
               }
             },
             {
@@ -2627,7 +2627,7 @@
               "name": "[parameters('functionAppName')]",
               "location": "[parameters('location')]",
               "tags": "[union(parameters('tags'), createObject('finops-component', 'amortized-engine'))]",
-              "kind": "functionapp,linux",
+              "kind": "functionapp",
               "identity": {
                 "type": "SystemAssigned"
               },
@@ -2635,8 +2635,6 @@
                 "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('functionAppName')))]",
                 "httpsOnly": true,
                 "siteConfig": {
-                  "pythonVersion": "3.11",
-                  "linuxFxVersion": "PYTHON|3.11",
                   "appSettings": [
                     {
                       "name": "AzureWebJobsStorage__accountName",
@@ -2719,8 +2717,8 @@
                       "value": "EnableWorkerIndexing"
                     },
                     {
-                      "name": "PYTHON_ISOLATE_WORKER_DEPENDENCIES",
-                      "value": "0"
+                      "name": "WEBSITE_RUN_FROM_PACKAGE",
+                      "value": "[parameters('packageUri')]"
                     }
                   ]
                 }
