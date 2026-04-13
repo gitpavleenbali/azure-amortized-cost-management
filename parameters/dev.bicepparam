@@ -9,6 +9,7 @@ param subscriptionBudgetAmount = 5000
 param enableAmortizedPipeline = false  // Enable after cost export has 1 week of data
 param enableAutoBudget = true
 param enableSelfServiceChange = true
+param enableFinanceBudget = false      // Enable only if finance provides separate budgets per RG
 param tags = {
   'finops-platform': 'budget-alerts-automation'
   'managed-by': 'finops-iac'

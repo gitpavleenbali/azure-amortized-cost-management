@@ -118,6 +118,9 @@ param enablePrivateNetworking bool = false
 @description('Enable post-deploy automation script (code deploy + kickstart). Disable if subscription has restrictive storage key policies — use CI/CD instead.')
 param enablePostDeploy bool = true
 
+@description('Enable finance budget tracking. When enabled, the Variance report and finance budget columns appear in the workbook. Disable if your organization does not use separate finance/technical budget models — the columns will be hidden to reduce noise.')
+param enableFinanceBudget bool = false
+
 @description('VNet name (only used when enablePrivateNetworking = true)')
 param vnetName string = 'vnet-finops-governance'
 
@@ -250,6 +253,7 @@ module workbook 'modules/workbook.json' = {
     location: location
     workspaceResourceId: logAnalytics.outputs.workspaceId
     workbookName: workbookDisplayName
+    enableFinanceBudget: enableFinanceBudget
   }
 }
 
@@ -350,6 +354,7 @@ module functionApp 'modules/function-app.bicep' = if (enableAmortizedPipeline) {
     costTrackingScope: costTrackingScope
     teamsWebhookUri: teamsWebhookUri
     finopsEmail: finopsEmail
+    enableFinanceBudget: enableFinanceBudget
     tags: tags
     enableRbacAssignment: enableRbacAssignment
   }

@@ -22,6 +22,7 @@ param enableAutoBudget = true                   // Auto EUR 100 on new RGs
 param enableSelfServiceChange = true            // Budget change Logic App
 param enablePolicy = true                       // Audit policy for RGs without budgets
 param enableRbacAssignment = true               // Assign MI roles (needs User Access Admin)
+param enableFinanceBudget = false                // Enable if finance provides separate budgets per RG
 
 // ── Tags ────────────────────────────────────────────────────
 param tags = {

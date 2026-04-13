@@ -49,6 +49,9 @@ param dcrRuleId string = ''
 @description('Log Analytics workspace ID (resource ID)')
 param logAnalyticsWorkspaceId string = ''
 
+@description('Enable finance budget tracking (variance report, finance columns)')
+param enableFinanceBudget bool = false
+
 resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${functionAppName}-plan'
   location: location
@@ -91,6 +94,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'SUBSCRIPTION_BUDGET_AMOUNT', value: string(subscriptionBudgetAmount) }
         { name: 'AZURE_SUBSCRIPTION_ID', value: subscription().subscriptionId }
         { name: 'COST_TRACKING_SCOPE', value: costTrackingScope }
+        { name: 'ENABLE_FINANCE_BUDGET', value: enableFinanceBudget ? 'true' : 'false' }
         { name: 'AzureWebJobsFeatureFlags', value: 'EnableWorkerIndexing' }
       ]
     }

@@ -61,6 +61,10 @@ EXCLUDED_RG_PREFIXES = [p.strip() for p in os.environ.get("EXCLUDED_RG_PREFIXES"
 GOVERNANCE_TAG_KEY   = os.environ.get("GOVERNANCE_TAG_KEY", "")
 GOVERNANCE_TAG_VALUE = os.environ.get("GOVERNANCE_TAG_VALUE", "")
 
+# Finance budget tracking toggle — controls whether finance budget columns are synced to LAW/workbook.
+# When disabled (default), financeBudget is not synced → no zero-noise in dashboards.
+ENABLE_FINANCE_BUDGET = os.environ.get("ENABLE_FINANCE_BUDGET", "false").lower() == "true"
+
 # ── Budget Alert Notification Framework — Tiered Thresholds ──
 # Thresholds scale by 3-month avg spend. Smaller RGs tolerate more variance.
 # Each tier: {"headup": %, "warning": %, "critical": %}
@@ -388,25 +392,97 @@ def _get_cosmos_container():
 
 
 def _read_amortized_costs() -> dict:
-    """Read latest amortized cost export CSV from blob storage."""
-    cred = DefaultAzureCredential()
-    client = BlobServiceClient(f"https://{STORAGE_ACCOUNT}.blob.core.windows.net", cred)
-    container = client.get_container_client(CONTAINER)
+    """Read amortized cost data. Tries blob export first, falls back to Cost Management Query API."""
+    costs = _read_costs_from_export()
+    if costs:
+        logging.info(f"Cost data from export CSV: {len(costs)} RGs")
+        return costs
 
-    blobs = sorted(container.list_blobs(name_starts_with="amortized/"), key=lambda b: b.last_modified, reverse=True)
-    blobs = [b for b in blobs if b.name.endswith(".csv")]
-    if not blobs:
-        logging.warning("No export blobs found")
+    # Fallback: query Cost Management API directly (works immediately, no export needed)
+    costs = _read_costs_from_api()
+    if costs:
+        logging.info(f"Cost data from Cost Management API: {len(costs)} RGs")
+    else:
+        logging.warning("No cost data available (no export CSV and Cost Management API returned empty)")
+    return costs
+
+
+def _read_costs_from_export() -> dict:
+    """Read latest amortized cost export CSV from blob storage."""
+    try:
+        cred = DefaultAzureCredential()
+        client = BlobServiceClient(f"https://{STORAGE_ACCOUNT}.blob.core.windows.net", cred)
+        container = client.get_container_client(CONTAINER)
+
+        blobs = sorted(container.list_blobs(name_starts_with="amortized/"), key=lambda b: b.last_modified, reverse=True)
+        blobs = [b for b in blobs if b.name.endswith(".csv")]
+        if not blobs:
+            return {}
+
+        data = container.get_blob_client(blobs[0].name).download_blob().readall().decode("utf-8")
+        costs = {}
+        for row in csv.DictReader(io.StringIO(data)):
+            rg = (row.get("resourceGroupName") or row.get("ResourceGroupName") or row.get("ResourceGroup") or row.get("x_ResourceGroupName") or "").lower()
+            cost = float(row.get("costInBillingCurrency") or row.get("CostInBillingCurrency") or row.get("PreTaxCost") or row.get("Cost") or 0)
+            if rg:
+                costs[rg] = costs.get(rg, 0) + cost
+        return costs
+    except Exception as ex:
+        logging.warning(f"Export CSV read failed (will try API): {ex}")
         return {}
 
-    data = container.get_blob_client(blobs[0].name).download_blob().readall().decode("utf-8")
-    costs = {}
-    for row in csv.DictReader(io.StringIO(data)):
-        rg = (row.get("resourceGroupName") or row.get("ResourceGroupName") or row.get("ResourceGroup") or row.get("x_ResourceGroupName") or "").lower()
-        cost = float(row.get("costInBillingCurrency") or row.get("CostInBillingCurrency") or row.get("PreTaxCost") or row.get("Cost") or 0)
-        if rg:
-            costs[rg] = costs.get(rg, 0) + cost
-    return costs
+
+def _read_costs_from_api() -> dict:
+    """Query Azure Cost Management API for current month amortized spend per resource group.
+    This is the fallback when no cost export CSV exists — gives immediate cost visibility."""
+    sub_id = os.environ.get("AZURE_SUBSCRIPTION_ID", os.environ.get("SUBSCRIPTION_ID", ""))
+    if not sub_id:
+        return {}
+
+    try:
+        cred = DefaultAzureCredential()
+        token = cred.get_token("https://management.azure.com/.default").token
+        now = datetime.now(timezone.utc)
+        start_of_month = now.replace(day=1).strftime("%Y-%m-%dT00:00:00Z")
+        end_of_day = now.strftime("%Y-%m-%dT23:59:59Z")
+
+        url = f"https://management.azure.com/subscriptions/{sub_id}/providers/Microsoft.CostManagement/query?api-version=2023-11-01"
+        body = {
+            "type": "AmortizedCost",
+            "timeframe": "Custom",
+            "timePeriod": {"from": start_of_month, "to": end_of_day},
+            "dataset": {
+                "granularity": "None",
+                "aggregation": {"totalCost": {"name": "Cost", "function": "Sum"}},
+                "grouping": [{"type": "Dimension", "name": "ResourceGroupName"}]
+            }
+        }
+        resp = requests.post(url, json=body, headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }, timeout=60)
+
+        if resp.status_code != 200:
+            logging.warning(f"Cost Management API returned {resp.status_code}: {resp.text[:200]}")
+            return {}
+
+        result = resp.json()
+        columns = [c["name"] for c in result.get("properties", {}).get("columns", [])]
+        rows = result.get("properties", {}).get("rows", [])
+
+        cost_idx = next((i for i, c in enumerate(columns) if c.lower() in ("cost", "totalcost", "pretaxcost")), 0)
+        rg_idx = next((i for i, c in enumerate(columns) if "resourcegroup" in c.lower()), 1)
+
+        costs = {}
+        for row in rows:
+            rg = str(row[rg_idx]).lower()
+            cost = float(row[cost_idx])
+            if rg and cost > 0:
+                costs[rg] = costs.get(rg, 0) + cost
+        return costs
+    except Exception as ex:
+        logging.warning(f"Cost Management API query failed: {ex}")
+        return {}
 
 
 def _read_inventory() -> dict:
@@ -739,11 +815,10 @@ def _sync_inventory_to_law() -> str:
         cosmos_container = _get_cosmos_container()
         records = []
         for doc in cosmos_container.query_items(query="SELECT * FROM c", enable_cross_partition_query=True):
-            records.append({
+            record = {
                 "resourceGroup": doc.get("resourceGroup", ""),
                 "subscriptionId": doc.get("subscriptionId", ""),
                 "technicalBudget": doc.get("technicalBudget", 0),
-                "financeBudget": doc.get("financeBudget", 0),
                 "amortizedMTD": doc.get("amortizedMTD", 0),
                 "forecastEOM": doc.get("forecastEOM", 0),
                 "actualPct": doc.get("actualPct", 0),
@@ -761,7 +836,13 @@ def _sync_inventory_to_law() -> str:
                 "scope": doc.get("scope", "resourceGroup"),
                 "totalResourceGroups": doc.get("totalResourceGroups", 0),
                 "TimeGenerated": datetime.now(timezone.utc).isoformat(),
-            })
+            }
+            # Only include finance budget when the feature is enabled — avoids zero-noise in dashboards
+            if ENABLE_FINANCE_BUDGET:
+                record["financeBudget"] = doc.get("financeBudget", 0)
+            else:
+                record["financeBudget"] = 0
+            records.append(record)
         if not records:
             return "no records"
 

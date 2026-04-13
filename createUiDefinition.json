@@ -213,6 +213,21 @@
               ]
             },
             "visible": true
+          },
+          {
+            "name": "enableFinanceBudget",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Finance Budget Tracking",
+            "defaultValue": "Disabled",
+            "toolTip": "Enable dual-budget model: Finance vs Technical budget variance tracking. Enable this only if your finance department provides separate budget allocations per resource group. When disabled, the Variance report section is hidden and finance budget columns are omitted — reducing dashboard noise.",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                { "label": "Enabled", "description": "Show Finance vs Technical budget variance report. Requires finance budgets to be uploaded via CSV or API.", "value": true },
+                { "label": "Disabled", "description": "Hide finance budget columns. Recommended unless your organization uses dual-budget models.", "value": false }
+              ]
+            },
+            "visible": true
           }
         ]
       },
@@ -517,6 +532,7 @@
       "enableAmortizedPipeline": "[steps('features').enableAmortizedPipeline]",
       "enableRbacAssignment": "[steps('features').enableRbacAssignment]",
       "enablePostDeploy": "[steps('features').enablePostDeploy]",
+      "enableFinanceBudget": "[steps('features').enableFinanceBudget]",
       "enablePrivateNetworking": "[steps('networking').enablePrivateNetworking]",
       "vnetName": "[steps('networking').vnetName]",
       "vnetAddressPrefix": "[steps('networking').vnetAddressPrefix]",
