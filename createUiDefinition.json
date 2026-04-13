@@ -204,15 +204,15 @@
             "type": "Microsoft.Common.DropDown",
             "label": "Post-Deploy Automation",
             "defaultValue": "Disabled",
-            "toolTip": "Creates cost export and wires Event Grid. NOT needed for Function App code — code loads directly from GitHub. Enable only on dev/sandbox subscriptions without storage key restrictions.",
+            "toolTip": "Internal — not needed. Function App code loads from GitHub automatically.",
             "constraints": {
-              "required": true,
+              "required": false,
               "allowedValues": [
-                { "label": "Enabled", "description": "Creates cost export + wires Event Grid. Requires storage key access (may fail on restricted subscriptions).", "value": true },
-                { "label": "Disabled", "description": "Recommended. Function App code loads from GitHub automatically. Cost data via API fallback.", "value": false }
+                { "label": "Enabled", "value": true },
+                { "label": "Disabled", "value": false }
               ]
             },
-            "visible": true
+            "visible": false
           },
           {
             "name": "enableFinanceBudget",
@@ -531,7 +531,7 @@
       "enablePolicy": "[steps('features').enablePolicy]",
       "enableAmortizedPipeline": "[steps('features').enableAmortizedPipeline]",
       "enableRbacAssignment": "[steps('features').enableRbacAssignment]",
-      "enablePostDeploy": "[steps('features').enablePostDeploy]",
+      "enablePostDeploy": false,
       "enableFinanceBudget": "[steps('features').enableFinanceBudget]",
       "enablePrivateNetworking": "[steps('networking').enablePrivateNetworking]",
       "vnetName": "[steps('networking').vnetName]",
