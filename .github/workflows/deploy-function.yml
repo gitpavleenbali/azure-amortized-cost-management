@@ -48,6 +48,11 @@ jobs:
           echo "func=$FUNC" >> $GITHUB_OUTPUT
           echo "Deploying to: $FUNC in $RG"
 
+      - name: Install dependencies on Linux
+        run: |
+          cd functions/amortized-budget-engine
+          pip install --target .python_packages/lib/site-packages -r requirements.txt --quiet
+
       - name: Install Azure Functions Core Tools
         run: |
           npm install -g azure-functions-core-tools@4 --unsafe-perm true
@@ -56,7 +61,7 @@ jobs:
         if: steps.detect.outputs.func != ''
         run: |
           cd functions/amortized-budget-engine
-          func azure functionapp publish "${{ steps.detect.outputs.func }}" --python --build remote
+          func azure functionapp publish "${{ steps.detect.outputs.func }}" --python --no-build
           echo "Deploy complete!"
 
       - name: Trigger initial backfill
