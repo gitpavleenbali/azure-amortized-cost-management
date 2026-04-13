@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "9535585534098816222"
+      "templateHash": "17083556758686788394"
     }
   },
   "parameters": {
@@ -2504,7 +2504,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "103794393536319541"
+              "templateHash": "5174418660002944083"
             }
           },
           "parameters": {
@@ -2713,22 +2713,6 @@
                     {
                       "name": "COST_TRACKING_SCOPE",
                       "value": "[parameters('costTrackingScope')]"
-                    },
-                    {
-                      "name": "WEBSITE_RUN_FROM_PACKAGE",
-                      "value": "[parameters('packageUri')]"
-                    },
-                    {
-                      "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
-                      "value": "true"
-                    },
-                    {
-                      "name": "ENABLE_ORYX_BUILD",
-                      "value": "true"
-                    },
-                    {
-                      "name": "BUILD_FLAGS",
-                      "value": "UseExpressBuild"
                     },
                     {
                       "name": "AzureWebJobsFeatureFlags",
