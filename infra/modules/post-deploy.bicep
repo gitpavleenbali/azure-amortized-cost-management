@@ -35,28 +35,11 @@ resource contributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
   }
 }
 
-// Storage account for deployment script (max 24 chars)
-// Uses managed identity auth — no shared keys (required when subscription policy blocks key-based auth)
-var scriptStorageName = take('stscript${uniqueString(resourceGroup().id)}', 24)
-
-resource scriptStorage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
-  name: scriptStorageName
-  location: location
-  tags: tags
-  kind: 'StorageV2'
-  sku: { name: 'Standard_LRS' }
-  properties: {
-    minimumTlsVersion: 'TLS1_2'
-    supportsHttpsTrafficOnly: true
-    allowBlobPublicAccess: false
-    allowSharedKeyAccess: false
-  }
-}
-
-// Grant Storage Blob Data Contributor to the identity on the script storage
-resource scriptStorageBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(postDeployIdentity.id, scriptStorage.id, 'StorageBlobContributor')
-  scope: scriptStorage
+// Grant Storage Blob Data Contributor on the function app's storage account
+// (needed to upload the Function App zip to the function-releases container)
+resource funcStorageBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(postDeployIdentity.id, storageAccountId, 'StorageBlobContributor')
+  scope: funcStorageAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
     principalId: postDeployIdentity.properties.principalId
@@ -64,15 +47,8 @@ resource scriptStorageBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-
   }
 }
 
-// Grant Storage File Data SMB Share Contributor to the identity on the script storage
-resource scriptStorageRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(postDeployIdentity.id, scriptStorage.id, 'StorageFileContributor')
-  scope: scriptStorage
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0c867c2a-1d8c-454a-a3db-ab2ea1bdc8bb')
-    principalId: postDeployIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
-  }
+resource funcStorageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
+  name: storageAccountName
 }
 
 resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
@@ -88,18 +64,13 @@ resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   }
   dependsOn: [
     contributorRole
-    scriptStorage
-    scriptStorageBlobRole
-    scriptStorageRole
+    funcStorageBlobRole
   ]
   properties: {
     azCliVersion: '2.60.0'
     retentionInterval: 'PT1H'
     timeout: 'PT30M'
     cleanupPreference: 'OnSuccess'
-    storageAccountSettings: {
-      storageAccountName: scriptStorage.name
-    }
     environmentVariables: [
       { name: 'SUBSCRIPTION_ID', value: subscriptionId }
       { name: 'STORAGE_ACCOUNT_NAME', value: storageAccountName }
@@ -173,21 +144,33 @@ EOF
       echo "  Triggered immediate export (data arrives in ~5 min)"
       echo ""
 
-      # ── Step 2: Deploy Function App code from GitHub zip ──
-      echo "[2/7] Deploying Function App code..."
+      # ── Step 2: Deploy Function App code via blob upload ──
+      echo "[2/7] Deploying Function App code to blob storage..."
       PACKAGE_URL="https://raw.githubusercontent.com/gitpavleenbali/azure-amortized-cost-management/main/functions/amortized-budget-engine.zip"
 
-      # Download zip and deploy via az functionapp deployment
+      # Download zip from GitHub
       curl -sL "$PACKAGE_URL" -o /tmp/functionapp.zip
-      if [ -f /tmp/functionapp.zip ]; then
-        az functionapp deployment source config-zip \
-          -g "$RESOURCE_GROUP" -n "$FUNCTION_APP_NAME" \
-          --src /tmp/functionapp.zip \
-          --build-remote true \
-          --output none 2>/dev/null || echo "  Zip deploy attempted"
-        echo "  Function App code deployed from GitHub zip"
+      if [ -f /tmp/functionapp.zip ] && [ -s /tmp/functionapp.zip ]; then
+        # Create function-releases container (idempotent)
+        az storage container create --name function-releases \
+          --account-name "$STORAGE_ACCOUNT_NAME" --auth-mode login \
+          --output none 2>/dev/null || true
+
+        # Upload zip to blob storage (function app MI authenticates to read it)
+        az storage blob upload --container-name function-releases --name engine.zip \
+          --file /tmp/functionapp.zip --account-name "$STORAGE_ACCOUNT_NAME" \
+          --auth-mode login --overwrite --output none 2>/dev/null
+
+        # Set WEBSITE_RUN_FROM_PACKAGE to the blob URL (MI auth, no SAS needed)
+        BLOB_URL="https://${STORAGE_ACCOUNT_NAME}.blob.core.windows.net/function-releases/engine.zip"
+        az functionapp config appsettings set -g "$RESOURCE_GROUP" -n "$FUNCTION_APP_NAME" \
+          --settings "WEBSITE_RUN_FROM_PACKAGE=$BLOB_URL" --output none 2>/dev/null
+
+        # Restart to pick up the new package
+        az functionapp restart -g "$RESOURCE_GROUP" -n "$FUNCTION_APP_NAME" --output none 2>/dev/null
+        echo "  Function App code deployed via blob URL: $BLOB_URL"
       else
-        echo "  Could not download Function App zip"
+        echo "  Could not download Function App zip from GitHub"
       fi
       echo ""
 

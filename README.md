@@ -95,9 +95,9 @@ See [Architecture Guide](docs/technical-guide.md) for the full 6-stage data flow
 
 ## Quick Start
 
-### Option A: One-Click Deploy (Recommended)
+### Option A: One-Click Deploy (Recommended for Dev/MVP)
 
-No tools, no terminal, no scripts. Everything is automated.
+Best for: Quick evaluation, dev subscriptions, hands-on learning, MVP validation. No tools, no terminal, no scripts.
 
 1. Click **Deploy to Azure** in the [Getting Started](#getting-started) section
 2. Walk through the **6-tab wizard**:
@@ -111,48 +111,52 @@ No tools, no terminal, no scripts. Everything is automated.
 
 **What happens automatically:**
 - All resources deploy (~5 min): Function App, Cosmos DB, Log Analytics, 3 Logic Apps, 3 Alert Rules, Workbook, Storage, Action Group, Budget, Policy
-- Function App code auto-deploys from the GitHub zip package
 - Post-deploy script runs inside the deployment:
+  - Downloads Function App zip from GitHub → uploads to blob storage
+  - Sets `WEBSITE_RUN_FROM_PACKAGE` to the blob URL (MI-authenticated)
   - Creates daily amortized cost export + triggers immediate run
   - Triggers `/api/backfill` (scans all RGs → Cosmos DB)
   - Triggers `/api/evaluate` (processes cost data → inventory)
   - Syncs to Log Analytics → powers Workbook + Alert Rules
 - **Open the Workbook dashboard ~10 minutes after deployment completes**
 
-### Option B: Fork/Clone & CI/CD Deploy
+> **Note**: The post-deploy automation requires a subscription without restrictive storage key policies. For enterprise/locked-down subscriptions, use Option B.
 
-For teams who want to customise the solution or deploy via their own pipelines:
+### Option B: Clone & CI/CD Deploy (Production)
+
+Best for: Production environments, enterprise subscriptions with security policies, teams who want full control over the deployment pipeline.
+
+See the **[CI/CD Deployment Guide](docs/cicd-guide.md)** for complete instructions including:
+- GitHub Actions and Azure DevOps pipeline templates
+- Deployment Center setup (GitHub, Azure Repos)
+- Manual CLI deploy steps
+- Troubleshooting guide with lessons learned
+- Security checklist for production
+- Full RBAC reference (11 role assignments across 5 managed identities)
+
+**Quick start:**
 
 ```bash
 # 1. Clone or use template
 git clone https://github.com/gitpavleenbali/azure-amortized-cost-management.git
 cd azure-amortized-cost-management
-# Or click "Use this template" on GitHub for a clean copy
 
-# 2. Edit parameters for your environment
-cp parameters/template.bicepparam parameters/my-env.bicepparam
-# Edit: set finopsEmail, location, subscriptionBudgetAmount
-
-# 3. Preview what will be deployed
-az deployment sub create \
-  --location eastus \
+# 2. Deploy infrastructure
+az deployment sub create --location eastus \
   --template-file infra/main.bicep \
-  --parameters parameters/my-env.bicepparam \
-  --what-if
+  --parameters parameters/template.bicepparam
 
-# 4. Deploy
-az deployment sub create \
-  --location eastus \
-  --template-file infra/main.bicep \
-  --parameters parameters/my-env.bicepparam
+# 3. Deploy Function App code (see docs/cicd-guide.md for full details)
+# Build zip on Linux, upload to blob, set package URL, restart
 ```
 
-> **No post-deploy scripts needed.** The deployment includes a post-deploy automation step that creates the cost export, deploys Function App code, and triggers the initial data pipeline. All RBAC role assignments are handled by the Bicep modules.
+> **Two-phase approach**: Infrastructure deploys via Bicep (Phase 1), then Function App code deploys via your CI/CD pipeline (Phase 2). This separation gives you full control over code lifecycle, approval gates, and staging slots.
 
 ### Documentation Index
 
 | Guide | Audience | What It Covers |
 |-------|----------|---------------|
+| [CI/CD Deployment Guide](docs/cicd-guide.md) | DevOps, Platform | Production deployment, GitHub Actions, Azure DevOps, troubleshooting, RBAC reference |
 | [Architecture Guide](docs/technical-guide.md) | Architects, DevOps | 6-stage data flow, all 9 endpoints, Cosmos schema, Mermaid diagrams |
 | [Cost Forecast](docs/cost-forecast.md) | FinOps, Finance | Per-component pricing, ~$2.50/month breakdown |
 | [Naming Conventions](docs/naming-conventions.md) | DevOps, Platform | Resource naming patterns, tag schema, environment strategy |

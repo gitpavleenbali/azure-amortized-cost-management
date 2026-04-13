@@ -41,6 +41,13 @@ resource financeContainer 'Microsoft.Storage/storageAccounts/blobServices/contai
   properties: { publicAccess: 'None' }
 }
 
+// Container for Function App zip packages (post-deploy uploads here)
+resource releasesContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: 'function-releases'
+  properties: { publicAccess: 'None' }
+}
+
 // Table for budget targets (amortized engine reads this)
 resource tableService 'Microsoft.Storage/storageAccounts/tableServices@2023-05-01' = {
   parent: storageAccount

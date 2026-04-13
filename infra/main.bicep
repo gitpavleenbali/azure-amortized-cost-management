@@ -338,6 +338,37 @@ module functionApp 'modules/function-app.bicep' = if (enableAmortizedPipeline) {
   }
 }
 
+// ── Module 9b: Post-Deploy Automation (code deploy + kickstart) ─
+// Downloads Function App zip from GitHub → uploads to blob storage →
+// sets WEBSITE_RUN_FROM_PACKAGE → creates cost export → triggers backfill + evaluate.
+// For production/restricted environments, use CI/CD instead (see docs/cicd-guide.md).
+module postDeploy 'modules/post-deploy.bicep' = if (enableAmortizedPipeline) {
+  name: 'deploy-post-deploy-kickstart'
+  scope: rg
+  params: {
+    location: location
+    storageAccountName: storageAccount.outputs.storageAccountName
+    storageAccountId: storageAccount.outputs.storageAccountId
+    functionAppName: functionApp.outputs.functionAppName
+    functionAppResourceGroup: rg.name
+    subscriptionId: subscription().subscriptionId
+    identityName: postDeployIdentityName
+    tags: tags
+  }
+  dependsOn: [
+    functionApp
+    storageAccount
+  ]
+}
+
+// ── Module 9c: Post-Deploy Subscription Role (Cost Management) ─
+module postDeploySubRole 'modules/post-deploy-sub-role.bicep' = if (enableAmortizedPipeline) {
+  name: 'deploy-post-deploy-sub-role'
+  params: {
+    principalId: postDeploy.outputs.postDeployIdentityPrincipalId
+  }
+}
+
 // ── Module 10: Networking (v2 — Private Endpoints) ─────────────
 module networking 'modules/networking.bicep' = if (enablePrivateNetworking) {
   name: 'deploy-networking'
@@ -360,12 +391,11 @@ module networking 'modules/networking.bicep' = if (enablePrivateNetworking) {
   ]
 }
 
-// ── Post-Deploy Note ─────────────────────────────────────────
-// Function App code deploys automatically via WEBSITE_RUN_FROM_PACKAGE.
-// Cost export: run scripts/Kickstart-Platform.ps1 or wait for timer.
-// Backfill: runs daily at 07:30 UTC via Backfill Logic App.
-// Evaluation: runs daily at 06:00 UTC via Function App timer.
-// First data appears in Workbook after first evaluation cycle.
+// ── Post-Deploy Automation ────────────────────────────────────
+// Option 1 (Deploy to Azure): Post-deploy script auto-deploys code,
+//   creates cost export, triggers backfill + evaluate.
+//   Data appears in Workbook ~10 minutes after deployment completes.
+// Option 2 (CI/CD): See docs/cicd-guide.md for production pipelines.
 
 // ── Subscription-scope RBAC for Function App ─────────────────
 // Cost Management Reader: read cost data for evaluation

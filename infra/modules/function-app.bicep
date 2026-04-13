@@ -15,8 +15,8 @@ param teamsWebhookUri string = ''
 param finopsEmail string
 param tags object = {}
 
-@description('Package deployment mode: "1" for zip deploy, or a full URL to a zip package')
-param packageUri string = '1'
+@description('Package URI: blob URL to the zip package in storage (post-deploy script uploads it)')
+param packageUri string = 'https://${storageAccountName}.blob.core.windows.net/function-releases/engine.zip'
 
 @description('Set to false if deployer lacks User Access Administrator role')
 param enableRbacAssignment bool = true
