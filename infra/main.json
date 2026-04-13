@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "16369125359277246453"
+      "templateHash": "9535585534098816222"
     }
   },
   "parameters": {
@@ -2504,7 +2504,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "11607799394259097238"
+              "templateHash": "103794393536319541"
             }
           },
           "parameters": {
@@ -2729,6 +2729,14 @@
                     {
                       "name": "BUILD_FLAGS",
                       "value": "UseExpressBuild"
+                    },
+                    {
+                      "name": "AzureWebJobsFeatureFlags",
+                      "value": "EnableWorkerIndexing"
+                    },
+                    {
+                      "name": "PYTHON_ISOLATE_WORKER_DEPENDENCIES",
+                      "value": "0"
                     }
                   ]
                 }

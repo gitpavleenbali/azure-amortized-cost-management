@@ -89,6 +89,8 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'SCM_DO_BUILD_DURING_DEPLOYMENT', value: 'true' }
         { name: 'ENABLE_ORYX_BUILD', value: 'true' }
         { name: 'BUILD_FLAGS', value: 'UseExpressBuild' }
+        { name: 'AzureWebJobsFeatureFlags', value: 'EnableWorkerIndexing' }
+        { name: 'PYTHON_ISOLATE_WORKER_DEPENDENCIES', value: '0' }
       ]
     }
   }
