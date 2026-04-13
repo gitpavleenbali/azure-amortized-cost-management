@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "11900583656564629326"
+      "templateHash": "16369125359277246453"
     }
   },
   "parameters": {
@@ -2504,7 +2504,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "14817059413657747036"
+              "templateHash": "11607799394259097238"
             }
           },
           "parameters": {
@@ -2713,6 +2713,22 @@
                     {
                       "name": "COST_TRACKING_SCOPE",
                       "value": "[parameters('costTrackingScope')]"
+                    },
+                    {
+                      "name": "WEBSITE_RUN_FROM_PACKAGE",
+                      "value": "[parameters('packageUri')]"
+                    },
+                    {
+                      "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+                      "value": "true"
+                    },
+                    {
+                      "name": "ENABLE_ORYX_BUILD",
+                      "value": "true"
+                    },
+                    {
+                      "name": "BUILD_FLAGS",
+                      "value": "UseExpressBuild"
                     }
                   ]
                 }
