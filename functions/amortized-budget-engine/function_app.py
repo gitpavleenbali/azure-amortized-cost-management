@@ -829,7 +829,7 @@ def backfill_existing_rgs(req: func.HttpRequest) -> func.HttpResponse:
     Params: subscriptionId, dryRun=true/false, minBudget=100, top=0 (0=all)
     """
     try:
-        sub_id = req.params.get("subscriptionId", os.environ.get("SUBSCRIPTION_ID", ""))
+        sub_id = req.params.get("subscriptionId", os.environ.get("AZURE_SUBSCRIPTION_ID", os.environ.get("SUBSCRIPTION_ID", "")))
         top = int(req.params.get("top", "0"))
         dry_run = req.params.get("dryRun", "false").lower() == "true"
         min_budget = int(req.params.get("minBudget", "100"))
