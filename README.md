@@ -89,7 +89,7 @@ One deployment gives you the full FinOps cost governance stack:
 
 **9 Function App endpoints** | **3 Logic Apps** | **3 Scheduled Query Rules** | **20+ deployed resources** | **20 Bicep modules**
 
-See [Architecture Guide](docs/technical-guide.md) for the full 6-stage data flow with diagrams.
+See [Architecture Guide](.internal/docs/technical-guide.md) for the full 6-stage data flow with diagrams.
 
 ---
 
@@ -172,7 +172,7 @@ az deployment sub create --location eastus \
 |-------|----------|---------------|
 | [CI/CD Deployment Guide](docs/cicd-guide.md) | DevOps, Platform | Production deployment, GitHub Actions, Azure DevOps, troubleshooting, RBAC reference |
 | [Visualization Guide](docs/visualization.md) | FinOps, Analysts, Executives | Azure Workbook (auto-deployed) + Power BI with Cosmos DB setup, DAX measures, query templates |
-| [Architecture Guide](docs/technical-guide.md) | Architects, DevOps | 6-stage data flow, all 9 endpoints, Cosmos schema, Mermaid diagrams |
+| [Architecture Guide](.internal/docs/technical-guide.md) | Architects, DevOps | 6-stage data flow, all 9 endpoints, Cosmos schema, Mermaid diagrams |
 | [Cost Forecast](docs/cost-forecast.md) | FinOps, Finance | Per-component pricing, ~$2.50/month breakdown |
 | [Naming Conventions](docs/naming-conventions.md) | DevOps, Platform | Resource naming patterns, tag schema, environment strategy |
 | [Contributing](CONTRIBUTING.md) | Developers | PR workflow, code standards, test requirements |
@@ -361,7 +361,7 @@ All resources use [Cloud Adoption Framework](https://learn.microsoft.com/azure/c
 
 | Document | Description |
 |----------|-------------|
-| [Architecture Guide](docs/technical-guide.md) | Full 6-stage data flow, Cosmos DB schema, alert framework, ITSM integration patterns |
+| [Architecture Guide](.internal/docs/technical-guide.md) | Full 6-stage data flow, Cosmos DB schema, alert framework, ITSM integration patterns |
 | [Cost Forecast](docs/cost-forecast.md) | Component-level pricing, scaling formula, ROI analysis |
 | [Naming Conventions](docs/naming-conventions.md) | Resource naming, tags, environments, thresholds, API patterns, best practices |
 
@@ -402,4 +402,5 @@ This project may contain trademarks or logos for projects, products, or services
 ---
 
 `Tags: finops, cost-management, azure, bicep, budget-alerts, amortized-cost, reserved-instances, savings-plans, cosmos-db, serverless, well-architected`
+
 
