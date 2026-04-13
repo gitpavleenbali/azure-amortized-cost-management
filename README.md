@@ -77,7 +77,7 @@ One deployment gives you the full FinOps cost governance stack:
 
 ### Platform Cost
 
-**~$2.50/month per subscription** — entirely serverless (Functions, Cosmos DB Serverless, Logic Apps Consumption). See [Cost Forecast](docs/cost-forecast.md) for detailed breakdown.
+**~$15/month per subscription** — Function App on B1 Basic plan (~$13), Cosmos DB Serverless (pay-per-request), Logic Apps Consumption. See [Cost Forecast](docs/cost-forecast.md) for detailed breakdown.
 
 ---
 
@@ -233,11 +233,11 @@ This platform is designed following the [Azure Well-Architected Framework](https
 
 | Pillar | How We Address It |
 |--------|------------------|
-| **Cost Optimization** | The platform itself runs on ~$2.50/month serverless. Cosmos DB Serverless = pay-per-request. Function App on Consumption plan. No idle compute. |
+| **Cost Optimization** | The platform runs on ~$15/month. Function App on B1 Basic for universal compatibility (persistent disk, no storage key dependency). Cosmos DB Serverless = pay-per-request. Customers can switch to Consumption (Y1) plan on subscriptions without `allowSharedKeyAccess` restrictions to reduce to ~$2.50/month. |
 | **Operational Excellence** | IaC-only (Bicep), CI/CD pipeline, automated daily evaluation, quarterly recalculation, observability via Log Analytics + Workbook |
 | **Reliability** | Idempotent deployments, timer-triggered evaluation with manual fallback, backfill Logic App as safety net, Cosmos DB automatic backup |
 | **Security** | Managed Identity everywhere (no shared keys in code), RBAC least-privilege, secure parameters for secrets, audit policy for compliance |
-| **Performance Efficiency** | Serverless auto-scale, Cosmos DB partition key on subscriptionId for multi-sub, async blob processing, configurable exclusion filters |
+| **Performance Efficiency** | B1 Basic plan with always-on capability, Cosmos DB partition key on subscriptionId for multi-sub, async blob processing, configurable exclusion filters. Customers can scale to S1/P1 for higher throughput. |
 
 ---
 
