@@ -115,8 +115,8 @@ param postDeployIdentityNameOverride string = ''
 @description('Enable private networking — deploys VNet, private endpoints for Cosmos DB & Storage, and Function App VNet integration')
 param enablePrivateNetworking bool = false
 
-@description('Enable post-deploy kickstart script (deploys Function App code, creates cost export, triggers backfill + evaluation). Uses MI-based storage auth — works on subscriptions with allowSharedKeyAccess=false.')
-param enablePostDeploy bool = true
+@description('Enable post-deploy kickstart script. Set to false (default) — Function App code loads directly from GitHub. Only enable on subscriptions WITHOUT allowSharedKeyAccess restrictions.')
+param enablePostDeploy bool = false
 
 @description('Enable finance budget tracking. When enabled, the Variance report and finance budget columns appear in the workbook. Disable if your organization does not use separate finance/technical budget models — the columns will be hidden to reduce noise.')
 param enableFinanceBudget bool = false

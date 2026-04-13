@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "12804888173345938822"
+      "templateHash": "6324698924190262074"
     }
   },
   "parameters": {
@@ -232,9 +232,9 @@
     },
     "enablePostDeploy": {
       "type": "bool",
-      "defaultValue": true,
+      "defaultValue": false,
       "metadata": {
-        "description": "Enable post-deploy kickstart script (deploys Function App code, creates cost export, triggers backfill + evaluation). Uses MI-based storage auth — works on subscriptions with allowSharedKeyAccess=false."
+        "description": "Enable post-deploy kickstart script. Set to false (default) — Function App code loads directly from GitHub. Only enable on subscriptions WITHOUT allowSharedKeyAccess restrictions."
       }
     },
     "enableFinanceBudget": {
@@ -2907,7 +2907,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "1527874037125975364"
+              "templateHash": "693437307005554417"
             }
           },
           "parameters": {
@@ -2946,7 +2946,7 @@
             },
             "packageUri": {
               "type": "string",
-              "defaultValue": "1",
+              "defaultValue": "https://raw.githubusercontent.com/gitpavleenbali/azure-amortized-cost-management/main/functions/amortized-budget-engine.zip",
               "metadata": {
                 "description": "Package URI: set to \"1\" for Kudu-managed deployments (CI/CD deploys code). For external URLs, provide a blob storage URL with MI auth."
               }

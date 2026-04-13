@@ -16,7 +16,7 @@ param finopsEmail string
 param tags object = {}
 
 @description('Package URI: set to "1" for Kudu-managed deployments (CI/CD deploys code). For external URLs, provide a blob storage URL with MI auth.')
-param packageUri string = '1'
+param packageUri string = 'https://raw.githubusercontent.com/gitpavleenbali/azure-amortized-cost-management/main/functions/amortized-budget-engine.zip'
 
 @description('Set to false if deployer lacks User Access Administrator role')
 param enableRbacAssignment bool = true

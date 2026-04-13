@@ -531,7 +531,7 @@
       "enablePolicy": "[steps('features').enablePolicy]",
       "enableAmortizedPipeline": "[steps('features').enableAmortizedPipeline]",
       "enableRbacAssignment": "[steps('features').enableRbacAssignment]",
-      "enablePostDeploy": true,
+      "enablePostDeploy": false,
       "enableFinanceBudget": "[steps('features').enableFinanceBudget]",
       "enablePrivateNetworking": "[steps('networking').enablePrivateNetworking]",
       "vnetName": "[steps('networking').vnetName]",
