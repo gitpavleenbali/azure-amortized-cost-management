@@ -11,9 +11,6 @@ on:
         description: 'Resource group name'
         required: true
         default: 'rg-finops-governance-dev'
-      function_app_name:
-        description: 'Function App name (leave empty for auto-detect)'
-        required: false
 
 permissions:
   id-token: write
@@ -21,7 +18,7 @@ permissions:
 
 jobs:
   deploy-function-code:
-    name: Build & Deploy Function App
+    name: Build & Deploy Function App (Blob Upload + MI Auth)
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     steps:
@@ -31,52 +28,62 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies on Linux
+      - name: Install Linux dependencies
         run: |
           cd functions/amortized-budget-engine
-          pip install --target .python_packages/lib/site-packages -r requirements.txt --quiet
+          pip install --target .python_packages/lib/site-packages \
+            --implementation cp --platform manylinux2014_x86_64 \
+            --python-version 3.11 --only-binary=:all: \
+            -r requirements.txt --quiet
+          echo "Installed $(find .python_packages -name '*.so' | wc -l) Linux .so files"
+          echo "Windows .pyd files: $(find .python_packages -name '*.pyd' | wc -l) (should be 0)"
 
-      - name: Create deployment package
+      - name: Create deployment zip
         run: |
           cd functions/amortized-budget-engine
-          zip -r ../../deploy.zip function_app.py host.json requirements.txt .python_packages/
+          zip -r ../../engine.zip function_app.py host.json requirements.txt .python_packages/
+          ls -la ../../engine.zip
 
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Detect Function App
-        id: detect
+      - name: Deploy via blob upload (MI-authenticated)
         run: |
           RG="${{ github.event.inputs.resource_group || 'rg-finops-governance-dev' }}"
-          FUNC="${{ github.event.inputs.function_app_name }}"
-          if [ -z "$FUNC" ]; then
-            FUNC=$(az functionapp list -g "$RG" --query "[0].name" -o tsv 2>/dev/null || echo "")
+
+          # Auto-detect storage account and function app
+          SA=$(az storage account list -g "$RG" --query "[0].name" -o tsv)
+          FUNC=$(az functionapp list -g "$RG" --query "[0].name" -o tsv)
+          echo "Storage: $SA | Function: $FUNC | RG: $RG"
+
+          if [ -z "$SA" ] || [ -z "$FUNC" ]; then
+            echo "ERROR: Could not find storage account or function app in $RG"
+            exit 1
           fi
-          echo "rg=$RG" >> $GITHUB_OUTPUT
-          echo "func=$FUNC" >> $GITHUB_OUTPUT
-          echo "Deploying to: $FUNC in $RG"
 
-      - name: Get publish profile
-        if: steps.detect.outputs.func != ''
-        id: profile
-        run: |
-          PROFILE=$(az functionapp deployment list-publishing-profiles \
-            -g "${{ steps.detect.outputs.rg }}" \
-            -n "${{ steps.detect.outputs.func }}" \
-            --xml 2>/dev/null)
-          echo "publish_profile<<EOF" >> $GITHUB_OUTPUT
-          echo "$PROFILE" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Create container and upload zip
+          az storage container create --name function-releases \
+            --account-name "$SA" --auth-mode login --output none 2>/dev/null || true
 
-      - name: Deploy to Azure Function App
-        if: steps.detect.outputs.func != ''
-        uses: azure/functions-action@v1
-        with:
-          app-name: ${{ steps.detect.outputs.func }}
-          package: deploy.zip
-          publish-profile: ${{ steps.profile.outputs.publish_profile }}
+          az storage blob upload --container-name function-releases --name engine.zip \
+            --file engine.zip --account-name "$SA" --auth-mode login --overwrite \
+            --output none
+
+          # Set WEBSITE_RUN_FROM_PACKAGE to blob URL (MI reads it — no keys/SAS)
+          BLOB_URL="https://${SA}.blob.core.windows.net/function-releases/engine.zip"
+          az functionapp config appsettings set -g "$RG" -n "$FUNC" \
+            --settings "WEBSITE_RUN_FROM_PACKAGE=$BLOB_URL" --output none
+
+          # Restart to pick up the new package
+          az functionapp restart -g "$RG" -n "$FUNC" --output none
+          echo "Deployed: $BLOB_URL"
+
+          # Wait and verify functions loaded
+          sleep 90
+          FUNC_COUNT=$(az functionapp function list -g "$RG" -n "$FUNC" --query "length(@)" -o tsv 2>/dev/null || echo "0")
+          echo "Functions loaded: $FUNC_COUNT/9"
 
       - name: Trigger initial backfill
         if: steps.detect.outputs.func != ''

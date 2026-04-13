@@ -40,6 +40,12 @@ param cosmosAccountName string = ''
 @description('Cosmos DB account ID')
 param cosmosAccountId string = ''
 
+@description('DCR Logs Ingestion endpoint (MI-authenticated, no shared key)')
+param dcrEndpoint string = ''
+
+@description('DCR Rule ID for FinOpsInventory stream')
+param dcrRuleId string = ''
+
 @description('Log Analytics workspace ID (resource ID)')
 param logAnalyticsWorkspaceId string = ''
 
@@ -79,6 +85,9 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'ALERT_THRESHOLDS', value: '50,75,90,100,110' }
         { name: 'LAW_WORKSPACE_ID', value: lawCustomerId }
         { name: 'LAW_SHARED_KEY', value: lawSharedKey }
+        { name: 'DCR_ENDPOINT', value: dcrEndpoint }
+        { name: 'DCR_RULE_ID', value: dcrRuleId }
+        { name: 'DCR_STREAM_NAME', value: 'Custom-FinOpsInventory_CL' }
         { name: 'SUBSCRIPTION_BUDGET_AMOUNT', value: string(subscriptionBudgetAmount) }
         { name: 'AZURE_SUBSCRIPTION_ID', value: subscription().subscriptionId }
         { name: 'COST_TRACKING_SCOPE', value: costTrackingScope }
@@ -162,6 +171,16 @@ resource lawContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01'
   name: guid(functionApp.id, 'LogAnalyticsContributor')
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '92aaf0da-9dab-42b6-94a3-d43ce8d16293')
+    principalId: functionApp.identity.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Grant Monitoring Metrics Publisher (DCR ingestion via Logs Ingestion API)
+resource metricsPublisherRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (enableRbacAssignment && !empty(dcrRuleId)) {
+  name: guid(functionApp.id, 'MonitoringMetricsPublisher')
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '3913510d-42f4-4e42-8a64-420c390055eb')
     principalId: functionApp.identity.principalId
     principalType: 'ServicePrincipal'
   }

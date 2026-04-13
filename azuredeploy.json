@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "10469587892403201613"
+      "templateHash": "7813965649605498158"
     }
   },
   "parameters": {
@@ -2448,6 +2448,304 @@
       "condition": "[parameters('enableAmortizedPipeline')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
+      "name": "deploy-data-collection-rule",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "workspaceId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-log-analytics'), '2022-09-01').outputs.workspaceId.value]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "11051452233614998723"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "workspaceId": {
+              "type": "string"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "dceName": {
+              "type": "string",
+              "defaultValue": "dce-finops-inventory",
+              "metadata": {
+                "description": "Name of the Data Collection Endpoint"
+              }
+            },
+            "dcrName": {
+              "type": "string",
+              "defaultValue": "dcr-finops-inventory",
+              "metadata": {
+                "description": "Name of the Data Collection Rule"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/dataCollectionEndpoints",
+              "apiVersion": "2023-03-11",
+              "name": "[parameters('dceName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "networkAcls": {
+                  "publicNetworkAccess": "Enabled"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.OperationalInsights/workspaces/tables",
+              "apiVersion": "2022-10-01",
+              "name": "[format('{0}/FinOpsInventory_CL', split(parameters('workspaceId'), '/')[8])]",
+              "properties": {
+                "schema": {
+                  "name": "FinOpsInventory_CL",
+                  "columns": [
+                    {
+                      "name": "TimeGenerated",
+                      "type": "datetime"
+                    },
+                    {
+                      "name": "resourceGroup",
+                      "type": "string"
+                    },
+                    {
+                      "name": "subscriptionId",
+                      "type": "string"
+                    },
+                    {
+                      "name": "technicalBudget",
+                      "type": "real"
+                    },
+                    {
+                      "name": "financeBudget",
+                      "type": "real"
+                    },
+                    {
+                      "name": "amortizedMTD",
+                      "type": "real"
+                    },
+                    {
+                      "name": "forecastEOM",
+                      "type": "real"
+                    },
+                    {
+                      "name": "actualPct",
+                      "type": "real"
+                    },
+                    {
+                      "name": "forecastPct",
+                      "type": "real"
+                    },
+                    {
+                      "name": "burnRateDaily",
+                      "type": "real"
+                    },
+                    {
+                      "name": "complianceStatus",
+                      "type": "string"
+                    },
+                    {
+                      "name": "costCenter",
+                      "type": "string"
+                    },
+                    {
+                      "name": "ownerEmail",
+                      "type": "string"
+                    },
+                    {
+                      "name": "technicalContact1",
+                      "type": "string"
+                    },
+                    {
+                      "name": "technicalContact2",
+                      "type": "string"
+                    },
+                    {
+                      "name": "billingContact",
+                      "type": "string"
+                    },
+                    {
+                      "name": "spendTier",
+                      "type": "string"
+                    },
+                    {
+                      "name": "governanceTagValue",
+                      "type": "string"
+                    },
+                    {
+                      "name": "lastEvaluated",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "retentionInDays": 90
+              }
+            },
+            {
+              "type": "Microsoft.Insights/dataCollectionRules",
+              "apiVersion": "2023-03-11",
+              "name": "[parameters('dcrName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "dataCollectionEndpointId": "[resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dceName'))]",
+                "streamDeclarations": {
+                  "Custom-FinOpsInventory_CL": {
+                    "columns": [
+                      {
+                        "name": "TimeGenerated",
+                        "type": "datetime"
+                      },
+                      {
+                        "name": "resourceGroup",
+                        "type": "string"
+                      },
+                      {
+                        "name": "subscriptionId",
+                        "type": "string"
+                      },
+                      {
+                        "name": "technicalBudget",
+                        "type": "real"
+                      },
+                      {
+                        "name": "financeBudget",
+                        "type": "real"
+                      },
+                      {
+                        "name": "amortizedMTD",
+                        "type": "real"
+                      },
+                      {
+                        "name": "forecastEOM",
+                        "type": "real"
+                      },
+                      {
+                        "name": "actualPct",
+                        "type": "real"
+                      },
+                      {
+                        "name": "forecastPct",
+                        "type": "real"
+                      },
+                      {
+                        "name": "burnRateDaily",
+                        "type": "real"
+                      },
+                      {
+                        "name": "complianceStatus",
+                        "type": "string"
+                      },
+                      {
+                        "name": "costCenter",
+                        "type": "string"
+                      },
+                      {
+                        "name": "ownerEmail",
+                        "type": "string"
+                      },
+                      {
+                        "name": "technicalContact1",
+                        "type": "string"
+                      },
+                      {
+                        "name": "technicalContact2",
+                        "type": "string"
+                      },
+                      {
+                        "name": "billingContact",
+                        "type": "string"
+                      },
+                      {
+                        "name": "spendTier",
+                        "type": "string"
+                      },
+                      {
+                        "name": "governanceTagValue",
+                        "type": "string"
+                      },
+                      {
+                        "name": "lastEvaluated",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                "destinations": {
+                  "logAnalytics": [
+                    {
+                      "workspaceResourceId": "[parameters('workspaceId')]",
+                      "name": "finopsLAW"
+                    }
+                  ]
+                },
+                "dataFlows": [
+                  {
+                    "streams": [
+                      "Custom-FinOpsInventory_CL"
+                    ],
+                    "destinations": [
+                      "finopsLAW"
+                    ],
+                    "transformKql": "source",
+                    "outputStream": "Custom-FinOpsInventory_CL"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces/tables', split(format('{0}/FinOpsInventory_CL', split(parameters('workspaceId'), '/')[8]), '/')[0], split(format('{0}/FinOpsInventory_CL', split(parameters('workspaceId'), '/')[8]), '/')[1])]",
+                "[resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dceName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "dceEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/dataCollectionEndpoints', parameters('dceName')), '2023-03-11').logsIngestion.endpoint]"
+            },
+            "dcrRuleId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName')), '2023-03-11').immutableId]"
+            },
+            "dcrId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/dataCollectionRules', parameters('dcrName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-log-analytics')]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableAmortizedPipeline')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
       "name": "deploy-function-app",
       "resourceGroup": "[parameters('resourceGroupName')]",
       "properties": {
@@ -2486,6 +2784,12 @@
           "lawSharedKey": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-log-analytics'), '2022-09-01').outputs.primarySharedKey.value]"
           },
+          "dcrEndpoint": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-data-collection-rule'), '2022-09-01').outputs.dceEndpoint.value]"
+          },
+          "dcrRuleId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-data-collection-rule'), '2022-09-01').outputs.dcrRuleId.value]"
+          },
           "logAnalyticsWorkspaceId": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-log-analytics'), '2022-09-01').outputs.workspaceId.value]"
           },
@@ -2515,7 +2819,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "3576065400303591336"
+              "templateHash": "1143018609861504024"
             }
           },
           "parameters": {
@@ -2606,6 +2910,20 @@
               "defaultValue": "",
               "metadata": {
                 "description": "Cosmos DB account ID"
+              }
+            },
+            "dcrEndpoint": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "DCR Logs Ingestion endpoint (MI-authenticated, no shared key)"
+              }
+            },
+            "dcrRuleId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "DCR Rule ID for FinOpsInventory stream"
               }
             },
             "logAnalyticsWorkspaceId": {
@@ -2704,6 +3022,18 @@
                     {
                       "name": "LAW_SHARED_KEY",
                       "value": "[parameters('lawSharedKey')]"
+                    },
+                    {
+                      "name": "DCR_ENDPOINT",
+                      "value": "[parameters('dcrEndpoint')]"
+                    },
+                    {
+                      "name": "DCR_RULE_ID",
+                      "value": "[parameters('dcrRuleId')]"
+                    },
+                    {
+                      "name": "DCR_STREAM_NAME",
+                      "value": "Custom-FinOpsInventory_CL"
                     },
                     {
                       "name": "SUBSCRIPTION_BUDGET_AMOUNT",
@@ -2815,6 +3145,20 @@
               "dependsOn": [
                 "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
               ]
+            },
+            {
+              "condition": "[and(parameters('enableRbacAssignment'), not(empty(parameters('dcrRuleId'))))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceId('Microsoft.Web/sites', parameters('functionAppName')), 'MonitoringMetricsPublisher')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '3913510d-42f4-4e42-8a64-420c390055eb')]",
+                "principalId": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-12-01', 'full').identity.principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+              ]
             }
           ],
           "outputs": {
@@ -2839,6 +3183,7 @@
       },
       "dependsOn": [
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-cosmos-db')]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-data-collection-rule')]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-log-analytics')]",
         "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'deploy-storage-account')]"

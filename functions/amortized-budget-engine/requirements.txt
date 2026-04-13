@@ -3,4 +3,5 @@ azure-identity==1.25.3
 azure-storage-blob==12.28.0
 azure-cosmos==4.15.0
 azure-mgmt-resource==25.0.0
+azure-monitor-ingestion==1.0.4
 requests==2.33.1

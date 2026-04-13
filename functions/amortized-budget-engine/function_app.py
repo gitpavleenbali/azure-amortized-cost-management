@@ -42,6 +42,9 @@ FINOPS_EMAIL    = os.environ.get("FINOPS_EMAIL", "")
 GOVERNANCE_EMAIL = os.environ.get("GOVERNANCE_EMAIL", "")
 LAW_WORKSPACE_ID = os.environ.get("LAW_WORKSPACE_ID", "")
 LAW_SHARED_KEY   = os.environ.get("LAW_SHARED_KEY", "")
+DCR_ENDPOINT     = os.environ.get("DCR_ENDPOINT", "")      # e.g. https://dcr-xxx.westus2-1.ingest.monitor.azure.com
+DCR_RULE_ID      = os.environ.get("DCR_RULE_ID", "")        # e.g. dcr-xxxxxxxx
+DCR_STREAM_NAME  = os.environ.get("DCR_STREAM_NAME", "Custom-FinOpsInventory_CL")
 
 # Cost tracking scope — controls what level of data is evaluated and stored:
 #   "resourceGroup" = per-RG tracking only (no subscription rollup)
@@ -723,9 +726,11 @@ def update_budget(req: func.HttpRequest) -> func.HttpResponse:
 # ══════════════════════════════════════════════════════════════
 
 def _sync_inventory_to_law() -> str:
-    """Push all Cosmos DB inventory records to Log Analytics for Azure Workbook."""
-    if not LAW_WORKSPACE_ID or not LAW_SHARED_KEY:
-        return "skipped (LAW_WORKSPACE_ID or LAW_SHARED_KEY not set)"
+    """Push all Cosmos DB inventory records to Log Analytics for Azure Workbook.
+    Prefers DCR/Logs Ingestion API (MI-authenticated, no shared keys).
+    Falls back to HTTP Data Collector API (shared key) if DCR not configured."""
+    if not LAW_WORKSPACE_ID:
+        return "skipped (LAW_WORKSPACE_ID not set)"
     try:
         cosmos_container = _get_cosmos_container()
         records = []
@@ -749,9 +754,41 @@ def _sync_inventory_to_law() -> str:
                 "spendTier": doc.get("spendTier", ""),
                 "governanceTagValue": doc.get("governanceTagValue", ""),
                 "lastEvaluated": doc.get("lastEvaluated", ""),
+                "TimeGenerated": datetime.now(timezone.utc).isoformat(),
             })
         if not records:
             return "no records"
+
+        # Prefer DCR (Logs Ingestion API) — uses Managed Identity, no shared keys
+        if DCR_ENDPOINT and DCR_RULE_ID:
+            return _sync_via_dcr(records)
+
+        # Fallback: HTTP Data Collector API (shared key)
+        if LAW_SHARED_KEY:
+            return _sync_via_shared_key(records)
+
+        return "skipped (neither DCR nor LAW_SHARED_KEY configured)"
+    except Exception as ex:
+        logging.error(f"LAW sync failed: {ex}")
+        return f"error: {str(ex)[:100]}"
+
+
+def _sync_via_dcr(records: list) -> str:
+    """Sync to LAW via Data Collection Rule + Logs Ingestion API (Managed Identity)."""
+    try:
+        from azure.monitor.ingestion import LogsIngestionClient
+        credential = DefaultAzureCredential()
+        client = LogsIngestionClient(endpoint=DCR_ENDPOINT, credential=credential)
+        client.upload(rule_id=DCR_RULE_ID, stream_name=DCR_STREAM_NAME, logs=records)
+        return f"ok via DCR ({len(records)} records)"
+    except Exception as ex:
+        logging.error(f"DCR sync failed: {ex}")
+        return f"error (DCR): {str(ex)[:100]}"
+
+
+def _sync_via_shared_key(records: list) -> str:
+    """Sync to LAW via HTTP Data Collector API (shared key — legacy fallback)."""
+    try:
         body = json.dumps(records)
         rfc1123 = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
         sig_str = f"POST\n{len(body)}\napplication/json\nx-ms-date:{rfc1123}\n/api/logs"
@@ -768,10 +805,10 @@ def _sync_inventory_to_law() -> str:
             },
             timeout=30,
         )
-        return f"ok ({len(records)} records, HTTP {resp.status_code})"
+        return f"ok via shared key ({len(records)} records, HTTP {resp.status_code})"
     except Exception as ex:
-        logging.error(f"LAW sync failed: {ex}")
-        return f"error: {str(ex)[:100]}"
+        logging.error(f"Shared key sync failed: {ex}")
+        return f"error (shared key): {str(ex)[:100]}"
 
 
 # ══════════════════════════════════════════════════════════════

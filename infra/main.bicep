@@ -313,6 +313,18 @@ module eventGrid 'modules/event-grid.bicep' = if (enableAutoBudget) {
   ]
 }
 
+// ── Module 8c: Data Collection Rule (DCR) for LAW ────────────
+// Enables MI-authenticated log ingestion (no shared keys).
+module dataCollectionRule 'modules/data-collection-rule.bicep' = if (enableAmortizedPipeline) {
+  name: 'deploy-data-collection-rule'
+  scope: rg
+  params: {
+    location: location
+    workspaceId: logAnalytics.outputs.workspaceId
+    tags: tags
+  }
+}
+
 // ── Module 9: Function App for Amortized Pipeline (LT-01) ───
 module functionApp 'modules/function-app.bicep' = if (enableAmortizedPipeline) {
   name: 'deploy-function-app'
@@ -328,6 +340,8 @@ module functionApp 'modules/function-app.bicep' = if (enableAmortizedPipeline) {
     cosmosAccountId: cosmosDb.outputs.cosmosAccountId
     lawCustomerId: logAnalytics.outputs.customerId
     lawSharedKey: logAnalytics.outputs.primarySharedKey
+    dcrEndpoint: dataCollectionRule.outputs.dceEndpoint
+    dcrRuleId: dataCollectionRule.outputs.dcrRuleId
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
     subscriptionBudgetAmount: subscriptionBudgetAmount
     costTrackingScope: costTrackingScope
