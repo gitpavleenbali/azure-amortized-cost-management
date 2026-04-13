@@ -95,7 +95,11 @@ def _read_rg_tags(sub_id: str, rg_name: str) -> dict:
 
 
 # ── Timer: Daily evaluation at 06:00 UTC ──────────────────────
-@app.timer_trigger(schedule="0 0 6 * * *", arg_name="timer", run_on_startup=False, use_monitor=True)
+# run_on_startup=True ensures the FIRST evaluation runs immediately when
+# the Function App starts after code deployment — this is the "kickstart"
+# that populates Cosmos DB → syncs to LAW → powers the Workbook dashboard.
+# On subsequent restarts, the evaluation is idempotent (safe to re-run).
+@app.timer_trigger(schedule="0 0 6 * * *", arg_name="timer", run_on_startup=True, use_monitor=True)
 def evaluate_amortized_budgets(timer: func.TimerRequest) -> None:
     """Daily evaluation: read amortized costs, update inventory, dispatch alerts, sync to LAW."""
     logging.info("=== FinOps Inventory Engine -- Start ===")
