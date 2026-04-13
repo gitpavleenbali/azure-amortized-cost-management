@@ -360,37 +360,12 @@ module networking 'modules/networking.bicep' = if (enablePrivateNetworking) {
   ]
 }
 
-// ── Module 11: Post-Deploy Kickstart (Automatic) ─────────────
-// Runs as part of the ARM deployment — no manual steps needed.
-// Creates cost export, triggers backfill + evaluation.
-module postDeploy 'modules/post-deploy.bicep' = if (enableAmortizedPipeline) {
-  name: 'deploy-post-deploy-kickstart'
-  scope: rg
-  params: {
-    location: location
-    storageAccountName: storageAccount.outputs.storageAccountName
-    storageAccountId: storageAccount.outputs.storageAccountId
-    functionAppName: functionApp.outputs.functionAppName
-    functionAppResourceGroup: rg.name
-    subscriptionId: subscription().subscriptionId
-    identityName: postDeployIdentityName
-    tags: tags
-  }
-  dependsOn: [
-    functionApp
-    cosmosDb
-    storageAccount
-  ]
-}
-
-// ── Subscription-scope RBAC for post-deploy identity ─────────
-// Cost Management Contributor: create/manage cost exports at subscription level
-module postDeploySubRole 'modules/post-deploy-sub-role.bicep' = if (enableAmortizedPipeline) {
-  name: 'deploy-post-deploy-sub-role'
-  params: {
-    principalId: postDeploy.outputs.postDeployIdentityPrincipalId
-  }
-}
+// ── Post-Deploy Note ─────────────────────────────────────────
+// Function App code deploys automatically via WEBSITE_RUN_FROM_PACKAGE.
+// Cost export: run scripts/Kickstart-Platform.ps1 or wait for timer.
+// Backfill: runs daily at 07:30 UTC via Backfill Logic App.
+// Evaluation: runs daily at 06:00 UTC via Function App timer.
+// First data appears in Workbook after first evaluation cycle.
 
 // ── Subscription-scope RBAC for Function App ─────────────────
 // Cost Management Reader: read cost data for evaluation
