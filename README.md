@@ -111,16 +111,18 @@ Best for: Quick evaluation, dev subscriptions, hands-on learning, MVP validation
 
 **What happens automatically:**
 - All resources deploy (~5 min): Function App, Cosmos DB, Log Analytics, 3 Logic Apps, 3 Alert Rules, Workbook, Storage, Action Group, Budget, Policy, DCR
-- Post-deploy kickstart runs automatically inside the deployment (MI-based auth — works on all subscriptions):
-  - Downloads Function App zip from GitHub → uploads to blob storage (MI auth)
-  - Sets `WEBSITE_RUN_FROM_PACKAGE` to the blob URL
-  - Creates daily amortized cost export
-  - Waits for Function App to start, then triggers `/api/backfill` (scans all RGs → Cosmos DB)
-  - Triggers `/api/evaluate` (reads cost data via API → updates inventory → syncs to Log Analytics)
-  - Wires Event Grid to Auto-Budget Logic App
+- ARM ZipDeploy pushes Function App code directly from GitHub to Kudu (no deployment scripts, no storage keys):
+  - ARM deployment engine downloads the CI-built Linux zip from this repo
+  - Pushes code to the Function App via Kudu's internal deployment API
+  - `WEBSITE_RUN_FROM_PACKAGE=1` tells the runtime to use the deployed zip
+  - All 9 Function endpoints load automatically
+- First kickstart runs immediately on Function App startup (`run_on_startup=True`):
+  - Evaluates all resource groups via Cost Management API (amortized + native cost)
+  - Seeds Cosmos DB with inventory data for every RG
+  - Syncs to Log Analytics via DCR (Managed Identity — no shared keys)
 - **Open the Workbook dashboard ~10-15 minutes after deployment completes**
 
-> **No manual steps needed.** The post-deploy script uses Managed Identity authentication for all storage operations — it works on subscriptions with `allowSharedKeyAccess=false` Azure Policy.
+> **No manual steps needed.** Code deploys via ARM ZipDeploy (no scripts, no storage keys). Data pipeline kicks off automatically on first boot. Works on all subscriptions including those with `allowSharedKeyAccess=false`.
 
 #### Common Issues (Option 1 — Deploy to Azure)
 
@@ -325,7 +327,7 @@ azure-amortized-cost-management/
 | `enablePolicy` | `true` | Audit policy for RGs without budgets |
 | `enableRbacAssignment` | `true` | Auto-assign RBAC to managed identities |
 | `enablePrivateNetworking` | `false` | VNet + private endpoints for Cosmos/Storage |
-| `enablePostDeploy` | `true` | Post-deploy kickstart: deploys Function App code, creates cost export, triggers backfill + evaluation. Uses MI-based storage auth — works on all subscriptions including those with `allowSharedKeyAccess=false`. |
+| `enablePostDeploy` | `false` | Legacy deployment script (disabled by default). Not needed — ARM ZipDeploy handles code deployment automatically. Only enable on unrestricted subscriptions that need cost export auto-creation. |
 | `enableFinanceBudget` | `false` | Show Finance vs Technical Budget Variance section in workbook. Enable only if your finance department provides separate budget allocations per resource group. When disabled, the Variance report is hidden and finance columns are omitted from dashboards — reducing noise. |
 | `budgetStartDate` | `2026-04-01` | Budget period start date (cannot change after creation) |
 
