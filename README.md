@@ -260,7 +260,7 @@ This solution uses **Managed Identity** (zero shared keys) with 11 RBAC role ass
 
 | Identity | Roles | How It's Set |
 |----------|-------|-------------|
-| Function App (System MSI) | Storage Blob/Queue/Table Owner, Cosmos DB SQL Data Contributor, Log Analytics Contributor, Cost Management Reader | Automatic via Bicep (when `enableRbacAssignment = Enabled`) |
+| Function App (System MSI) | Storage Blob Data Owner, Storage Queue Data Contributor, Storage Table Data Contributor, Storage Account Contributor, Cosmos DB SQL Data Contributor, Log Analytics Contributor, Cost Management Reader, Monitoring Metrics Publisher (DCR) | Automatic via Bicep (when `enableRbacAssignment = Enabled`) |
 | Auto-Budget Logic App (System MSI) | Cost Management Contributor (subscription scope) | Automatic via Bicep |
 | Budget Change Logic App (System MSI) | Cost Management Contributor (subscription scope) | Automatic via Bicep |
 | Backfill Logic App (System MSI) | Reader (subscription scope) | Automatic via Bicep |
@@ -268,7 +268,9 @@ This solution uses **Managed Identity** (zero shared keys) with 11 RBAC role ass
 
 **If your organisation requires manual RBAC approval**: set `enableRbacAssignment = Disabled` during deployment, then assign the roles listed above through your ITSM/approval workflow.
 
-**Log Analytics authentication note**: The `_sync_to_law()` function uses the HTTP Data Collector API which requires a shared key (Azure platform limitation — Managed Identity not yet supported for this API). The key is passed securely via `@secure()` Bicep parameter and stored in Function App app settings. Microsoft is migrating to the [Logs Ingestion API](https://learn.microsoft.com/azure/azure-monitor/logs/logs-ingestion-api-overview) which supports Managed Identity — this will be adopted in a future version.
+**Log Analytics authentication**: The `_sync_to_law()` function supports two modes:
+1. **DCR + Logs Ingestion API** (default, preferred) — uses Managed Identity via `azure-monitor-ingestion` SDK. The Bicep template deploys a Data Collection Rule (DCR) and Data Collection Endpoint (DCE) automatically. No shared keys needed.
+2. **HTTP Data Collector API** (fallback) — uses a shared key, auto-detected if DCR environment variables are not set. The key is passed securely via `@secure()` Bicep parameter.
 
 ---
 
@@ -276,10 +278,11 @@ This solution uses **Managed Identity** (zero shared keys) with 11 RBAC role ass
 
 ```
 azure-amortized-cost-management/
-├── .github/workflows/ci.yml          # GitHub Actions CI (Bicep lint + pytest)
+├── .github/workflows/ci.yml           # GitHub Actions CI (Bicep lint + pytest)
+├── .github/workflows/deploy-function.yml  # CD — builds Linux zip, uploads to blob, restarts Function App
 ├── infra/
 │   ├── main.bicep                    # Orchestrator — deploys all 9+ modules
-│   └── modules/                      # Action Group, Budget, Cosmos, Function, Logic Apps, Policy, Storage, Event Grid
+│   └── modules/                      # Action Group, Budget, Cosmos, DCR, Function, Logic Apps, Policy, Storage, Event Grid, Post-Deploy
 ├── functions/
 │   └── amortized-budget-engine/      # Python 3.11 Azure Function — 9 endpoints
 ├── parameters/
@@ -292,7 +295,7 @@ azure-amortized-cost-management/
 ├── dashboards/                       # Power BI Cosmos connection templates
 ├── queries/                          # KQL (Resource Graph) + SQL (Cosmos + Snowflake)
 ├── tests/                            # pytest (14 tests) + Pester (infra validation)
-├── docs/                             # Architecture guide + cost forecast
+├── docs/                             # Architecture guide, CI/CD guide, cost forecast
 ├── LICENSE                           # MIT
 ├── CONTRIBUTING.md
 ├── SECURITY.md
@@ -319,6 +322,7 @@ azure-amortized-cost-management/
 | `enablePolicy` | `true` | Audit policy for RGs without budgets |
 | `enableRbacAssignment` | `true` | Auto-assign RBAC to managed identities |
 | `enablePrivateNetworking` | `false` | VNet + private endpoints for Cosmos/Storage |
+| `enablePostDeploy` | `true` | Run the post-deploy automation script (code deploy, cost export, backfill). Set to `false` for restricted subscriptions that block storage key access — use CI/CD (Option B) instead. |
 | `budgetStartDate` | `2026-04-01` | Budget period start date (cannot change after creation) |
 
 ### Resource Naming

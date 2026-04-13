@@ -68,9 +68,17 @@ All resources deploy in ~5 minutes: Function App (empty), Cosmos DB, Storage, Lo
 6. Azure auto-creates a GitHub Actions workflow that deploys on every push
 7. Save — first deployment triggers automatically
 
-### Option B: GitHub Actions Workflow
+### Option B: GitHub Actions Workflow (Included)
 
-Create `.github/workflows/deploy-function.yml`:
+The repository includes a ready-to-use workflow at `.github/workflows/deploy-function.yml` that:
+- Triggers automatically after CI passes on `main` branch, or manually via `workflow_dispatch`
+- Builds the zip with Linux-compatible dependencies on `ubuntu-latest`
+- Uploads the zip to your storage account's `function-releases` container via MI auth
+- Sets `WEBSITE_RUN_FROM_PACKAGE` to the blob URL
+- Restarts the Function App and verifies 9 functions loaded
+- Triggers the initial backfill + evaluate pipeline
+
+**Setup**: Set the `AZURE_CREDENTIALS` secret on your GitHub repo (service principal with Contributor + Storage Blob Data Contributor on the resource group). Then either push to `main` or trigger the workflow manually with your resource group name.\n\nSee the full workflow: [`.github/workflows/deploy-function.yml`](../.github/workflows/deploy-function.yml)
 
 ```yaml
 name: Deploy Function App Code
@@ -323,7 +331,7 @@ find .python_packages -name "*.so" | wc -l    # Should be > 0
 - [ ] `allowBlobPublicAccess: false` on storage account
 - [ ] `minimumTlsVersion: 'TLS1_2'` on storage
 - [ ] Optional: Enable **private networking** toggle for VNet + private endpoints
-- [ ] Optional: Replace LAW shared key with **Data Collection Rules** (DCR)
+- [x] DCR + Logs Ingestion API deployed for LAW (MI-authenticated, no shared keys)
 
 ---
 
