@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "11945448719401520377"
+      "templateHash": "6979906166536084097"
     }
   },
   "parameters": {
@@ -2826,7 +2826,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "13712670228851910324"
+              "templateHash": "18088074833855854652"
             }
           },
           "parameters": {
@@ -2865,9 +2865,9 @@
             },
             "packageUri": {
               "type": "string",
-              "defaultValue": "[format('https://{0}.blob.core.windows.net/function-releases/engine.zip', parameters('storageAccountName'))]",
+              "defaultValue": "1",
               "metadata": {
-                "description": "Package URI: blob URL to the zip package in storage (post-deploy script uploads it)"
+                "description": "Package URI: set to \"1\" initially (post-deploy or CI/CD uploads the zip and sets the blob URL)"
               }
             },
             "enableRbacAssignment": {
