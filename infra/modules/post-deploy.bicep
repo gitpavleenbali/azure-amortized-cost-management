@@ -52,6 +52,20 @@ resource funcStorageBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01
   }
 }
 
+// Grant Storage File Data Privileged Contributor on the storage account
+// This is CRITICAL — deployment scripts use ACI which needs file share access.
+// With this role + storageAccountSettings, the script uses MI auth instead of keys,
+// bypassing allowSharedKeyAccess=false Azure Policy.
+resource funcStorageFileRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(postDeployIdentity.id, storageAccountId, 'StorageFileDataPrivContributor')
+  scope: funcStorageAccount
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '69566ab7-960f-475b-8e7c-b3118f30c6bd')
+    principalId: postDeployIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   name: 'finops-post-deploy-kickstart'
   location: location
@@ -66,12 +80,16 @@ resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   dependsOn: [
     contributorRole
     funcStorageBlobRole
+    funcStorageFileRole
   ]
   properties: {
     azCliVersion: '2.60.0'
     retentionInterval: 'PT1H'
     timeout: 'PT30M'
     cleanupPreference: 'OnSuccess'
+    storageAccountSettings: {
+      storageAccountName: storageAccountName
+    }
     environmentVariables: [
       { name: 'SUBSCRIPTION_ID', value: subscriptionId }
       { name: 'STORAGE_ACCOUNT_NAME', value: storageAccountName }

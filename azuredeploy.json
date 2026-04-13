@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "6419313812789808182"
+      "templateHash": "12804888173345938822"
     }
   },
   "parameters": {
@@ -232,9 +232,9 @@
     },
     "enablePostDeploy": {
       "type": "bool",
-      "defaultValue": false,
+      "defaultValue": true,
       "metadata": {
-        "description": "Enable post-deploy automation script (cost export creation + Event Grid wiring). Not needed for code deployment — code loads directly from GitHub. Disable on subscriptions with restrictive storage key policies."
+        "description": "Enable post-deploy kickstart script (deploys Function App code, creates cost export, triggers backfill + evaluation). Uses MI-based storage auth — works on subscriptions with allowSharedKeyAccess=false."
       }
     },
     "enableFinanceBudget": {
@@ -2907,7 +2907,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "1049043417043183252"
+              "templateHash": "1527874037125975364"
             }
           },
           "parameters": {
@@ -2946,9 +2946,9 @@
             },
             "packageUri": {
               "type": "string",
-              "defaultValue": "https://raw.githubusercontent.com/gitpavleenbali/azure-amortized-cost-management/main/functions/amortized-budget-engine.zip",
+              "defaultValue": "1",
               "metadata": {
-                "description": "Package URI: GitHub raw URL loads code directly — no deployment script needed. Override with blob URL for private repos."
+                "description": "Package URI: set to \"1\" for Kudu-managed deployments (CI/CD deploys code). For external URLs, provide a blob storage URL with MI auth."
               }
             },
             "enableRbacAssignment": {
@@ -3332,7 +3332,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "3152729450037857828"
+              "templateHash": "5066900872521014854"
             }
           },
           "parameters": {
@@ -3402,6 +3402,20 @@
               ]
             },
             {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('storageAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), parameters('storageAccountId'), 'StorageFileDataPrivContributor')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '69566ab7-960f-475b-8e7c-b3118f30c6bd')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]"
+              ]
+            },
+            {
               "type": "Microsoft.Resources/deploymentScripts",
               "apiVersion": "2023-08-01",
               "name": "finops-post-deploy-kickstart",
@@ -3419,6 +3433,9 @@
                 "retentionInterval": "PT1H",
                 "timeout": "PT30M",
                 "cleanupPreference": "OnSuccess",
+                "storageAccountSettings": {
+                  "storageAccountName": "[parameters('storageAccountName')]"
+                },
                 "environmentVariables": [
                   {
                     "name": "SUBSCRIPTION_ID",
@@ -3446,6 +3463,7 @@
               "dependsOn": [
                 "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), 'Contributor', resourceGroup().id))]",
                 "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), parameters('storageAccountId'), 'StorageBlobContributor'))]",
+                "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), parameters('storageAccountId'), 'StorageFileDataPrivContributor'))]",
                 "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]"
               ]
             }

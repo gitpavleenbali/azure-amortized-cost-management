@@ -203,8 +203,8 @@
             "name": "enablePostDeploy",
             "type": "Microsoft.Common.DropDown",
             "label": "Post-Deploy Automation",
-            "defaultValue": "Disabled",
-            "toolTip": "Internal — not needed. Function App code loads from GitHub automatically.",
+            "defaultValue": "Enabled",
+            "toolTip": "Deploys Function App code, creates cost export, triggers data pipeline. Uses managed identity auth.",
             "constraints": {
               "required": false,
               "allowedValues": [
@@ -531,7 +531,7 @@
       "enablePolicy": "[steps('features').enablePolicy]",
       "enableAmortizedPipeline": "[steps('features').enableAmortizedPipeline]",
       "enableRbacAssignment": "[steps('features').enableRbacAssignment]",
-      "enablePostDeploy": false,
+      "enablePostDeploy": true,
       "enableFinanceBudget": "[steps('features').enableFinanceBudget]",
       "enablePrivateNetworking": "[steps('networking').enablePrivateNetworking]",
       "vnetName": "[steps('networking').vnetName]",
