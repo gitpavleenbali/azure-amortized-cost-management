@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "4334259555712623665"
+      "templateHash": "12729436818641571647"
     }
   },
   "parameters": {
@@ -773,7 +773,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "13250678713934488529"
+              "templateHash": "9729327273133848737"
             }
           },
           "parameters": {
@@ -807,6 +807,7 @@
                 "minimumTlsVersion": "TLS1_2",
                 "supportsHttpsTrafficOnly": true,
                 "allowBlobPublicAccess": false,
+                "allowSharedKeyAccess": true,
                 "accessTier": "Hot"
               }
             },
@@ -2511,7 +2512,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "12721048465357435011"
+              "templateHash": "15753410257827704534"
             }
           },
           "parameters": {
@@ -2727,14 +2728,6 @@
                     {
                       "name": "AzureWebJobsFeatureFlags",
                       "value": "EnableWorkerIndexing"
-                    },
-                    {
-                      "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
-                      "value": "true"
-                    },
-                    {
-                      "name": "ENABLE_ORYX_BUILD",
-                      "value": "true"
                     }
                   ]
                 }
