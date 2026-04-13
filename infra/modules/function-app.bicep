@@ -85,7 +85,6 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'SUBSCRIPTION_BUDGET_AMOUNT', value: string(subscriptionBudgetAmount) }
         { name: 'AZURE_SUBSCRIPTION_ID', value: subscription().subscriptionId }
         { name: 'COST_TRACKING_SCOPE', value: costTrackingScope }
-        { name: 'WEBSITE_RUN_FROM_PACKAGE', value: packageUri }
       ]
     }
   }

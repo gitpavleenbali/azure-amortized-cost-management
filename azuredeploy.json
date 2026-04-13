@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "5122956002922763032"
+      "templateHash": "11900583656564629326"
     }
   },
   "parameters": {
@@ -2504,7 +2504,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "14914170160374553469"
+              "templateHash": "14817059413657747036"
             }
           },
           "parameters": {
@@ -2713,10 +2713,6 @@
                     {
                       "name": "COST_TRACKING_SCOPE",
                       "value": "[parameters('costTrackingScope')]"
-                    },
-                    {
-                      "name": "WEBSITE_RUN_FROM_PACKAGE",
-                      "value": "[parameters('packageUri')]"
                     }
                   ]
                 }
