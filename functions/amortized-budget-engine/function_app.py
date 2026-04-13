@@ -245,14 +245,16 @@ def _run_evaluation() -> dict:
         # Classify spend tier based on budget amount
         tier_name, tier_thresholds = _classify_spend_tier(budget)
 
-        # Determine compliance status using tiered thresholds
+        # Determine compliance status — absolute + tiered thresholds
+        # Rule 1: Over 100% of budget = ALWAYS over_budget (regardless of tier)
+        # Rule 2: Within budget, tiered thresholds set headup/warning/critical
         if budget <= 0:
             status = "no_budget"
-        elif pct >= tier_thresholds["critical"]:
+        elif pct >= 100:
             status = "over_budget"
-        elif pct >= tier_thresholds["warning"]:
+        elif pct >= tier_thresholds["warning"] or pct >= 80:
             status = "warning"
-        elif pct >= tier_thresholds["headup"]:
+        elif pct >= tier_thresholds["headup"] or pct >= 60:
             status = "at_risk"
         else:
             status = "on_track"
