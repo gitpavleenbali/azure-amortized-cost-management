@@ -43,6 +43,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Validate resource group exists
+        run: |
+          RG="${{ github.event.inputs.resource_group }}"
+          if ! az group exists --name "$RG" -o tsv | grep -q true; then
+            echo "::error::Resource group '$RG' does not exist. Deploy infrastructure first (Bicep), then run this workflow."
+            exit 1
+          fi
+          echo "Resource group '$RG' confirmed"
+
       - name: Deploy via blob upload (MI-authenticated)
         run: |
           RG="${{ github.event.inputs.resource_group }}"

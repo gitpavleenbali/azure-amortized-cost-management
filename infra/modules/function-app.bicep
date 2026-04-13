@@ -83,8 +83,8 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'TEAMS_WEBHOOK_URL', value: teamsWebhookUri }
         { name: 'FINOPS_EMAIL', value: finopsEmail }
         { name: 'ALERT_THRESHOLDS', value: '50,75,90,100,110' }
-        { name: 'LAW_WORKSPACE_ID', value: lawCustomerId }
-        { name: 'LAW_SHARED_KEY', value: lawSharedKey }
+        { name: 'LAW_WORKSPACE_ID', value: !empty(dcrRuleId) ? '' : lawCustomerId }
+        { name: 'LAW_SHARED_KEY', value: !empty(dcrRuleId) ? '' : lawSharedKey }
         { name: 'DCR_ENDPOINT', value: dcrEndpoint }
         { name: 'DCR_RULE_ID', value: dcrRuleId }
         { name: 'DCR_STREAM_NAME', value: 'Custom-FinOpsInventory_CL' }

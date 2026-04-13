@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "18350007618377245450"
+      "templateHash": "16901879930938775217"
     }
   },
   "parameters": {
@@ -2826,7 +2826,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "1143018609861504024"
+              "templateHash": "13712670228851910324"
             }
           },
           "parameters": {
@@ -3024,11 +3024,11 @@
                     },
                     {
                       "name": "LAW_WORKSPACE_ID",
-                      "value": "[parameters('lawCustomerId')]"
+                      "value": "[if(not(empty(parameters('dcrRuleId'))), '', parameters('lawCustomerId'))]"
                     },
                     {
                       "name": "LAW_SHARED_KEY",
-                      "value": "[parameters('lawSharedKey')]"
+                      "value": "[if(not(empty(parameters('dcrRuleId'))), '', parameters('lawSharedKey'))]"
                     },
                     {
                       "name": "DCR_ENDPOINT",

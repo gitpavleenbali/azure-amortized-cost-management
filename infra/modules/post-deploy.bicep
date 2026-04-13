@@ -35,6 +35,11 @@ resource contributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
   }
 }
 
+// Reference the function app's storage account
+resource funcStorageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
+  name: storageAccountName
+}
+
 // Grant Storage Blob Data Contributor on the function app's storage account
 // (needed to upload the Function App zip to the function-releases container)
 resource funcStorageBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
@@ -45,10 +50,6 @@ resource funcStorageBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01
     principalId: postDeployIdentity.properties.principalId
     principalType: 'ServicePrincipal'
   }
-}
-
-resource funcStorageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
-  name: storageAccountName
 }
 
 resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
