@@ -5,3 +5,4 @@ azure-cosmos==4.15.0
 azure-mgmt-resource==25.0.0
 azure-monitor-ingestion==1.0.4
 requests==2.33.1
+cryptography<44.0.0

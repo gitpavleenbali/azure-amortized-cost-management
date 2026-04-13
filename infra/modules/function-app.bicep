@@ -56,7 +56,7 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${functionAppName}-plan'
   location: location
   tags: tags
-  kind: 'linux'
+  kind: 'functionapp'
   sku: { name: 'B1', tier: 'Basic' }
   properties: { reserved: true } // Linux
 }

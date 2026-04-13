@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "8717735382658644344"
+      "templateHash": "14562234573489742996"
     }
   },
   "parameters": {
@@ -2907,7 +2907,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "14265349203942285097"
+              "templateHash": "4175336533229687525"
             }
           },
           "parameters": {
@@ -3043,7 +3043,7 @@
               "name": "[format('{0}-plan', parameters('functionAppName'))]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
-              "kind": "linux",
+              "kind": "functionapp",
               "sku": {
                 "name": "B1",
                 "tier": "Basic"
