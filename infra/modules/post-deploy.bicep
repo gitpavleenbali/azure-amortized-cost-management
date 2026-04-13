@@ -36,6 +36,7 @@ resource contributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
 }
 
 // Storage account for deployment script (max 24 chars)
+// Uses managed identity auth — no shared keys (required when subscription policy blocks key-based auth)
 var scriptStorageName = take('stscript${uniqueString(resourceGroup().id)}', 24)
 
 resource scriptStorage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
@@ -48,7 +49,18 @@ resource scriptStorage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
-    allowSharedKeyAccess: true
+    allowSharedKeyAccess: false
+  }
+}
+
+// Grant Storage Blob Data Contributor to the identity on the script storage
+resource scriptStorageBlobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(postDeployIdentity.id, scriptStorage.id, 'StorageBlobContributor')
+  scope: scriptStorage
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')
+    principalId: postDeployIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
   }
 }
 
@@ -77,6 +89,7 @@ resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   dependsOn: [
     contributorRole
     scriptStorage
+    scriptStorageBlobRole
     scriptStorageRole
   ]
   properties: {
@@ -86,7 +99,6 @@ resource postDeployScript 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
     cleanupPreference: 'OnSuccess'
     storageAccountSettings: {
       storageAccountName: scriptStorage.name
-      storageAccountKey: scriptStorage.listKeys().keys[0].value
     }
     environmentVariables: [
       { name: 'SUBSCRIPTION_ID', value: subscriptionId }

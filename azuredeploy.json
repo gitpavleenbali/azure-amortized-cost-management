@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "4166002487750075194"
+      "templateHash": "14744082362242404671"
     }
   },
   "parameters": {
@@ -3306,7 +3306,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "11405808497087878570"
+              "templateHash": "1924248491152757454"
             }
           },
           "parameters": {
@@ -3378,8 +3378,23 @@
                 "minimumTlsVersion": "TLS1_2",
                 "supportsHttpsTrafficOnly": true,
                 "allowBlobPublicAccess": false,
-                "allowSharedKeyAccess": true
+                "allowSharedKeyAccess": false
               }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', variables('scriptStorageName'))]",
+              "name": "[guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName')), 'StorageBlobContributor')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName'))]"
+              ]
             },
             {
               "type": "Microsoft.Authorization/roleAssignments",
@@ -3415,8 +3430,7 @@
                 "timeout": "PT30M",
                 "cleanupPreference": "OnSuccess",
                 "storageAccountSettings": {
-                  "storageAccountName": "[variables('scriptStorageName')]",
-                  "storageAccountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName')), '2023-05-01').keys[0].value]"
+                  "storageAccountName": "[variables('scriptStorageName')]"
                 },
                 "environmentVariables": [
                   {
@@ -3446,6 +3460,7 @@
                 "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), 'Contributor', resourceGroup().id))]",
                 "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName'))]",
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName'))]",
+                "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName')), 'StorageBlobContributor'))]",
                 "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('identityName')), resourceId('Microsoft.Storage/storageAccounts', variables('scriptStorageName')), 'StorageFileContributor'))]"
               ]
             }
