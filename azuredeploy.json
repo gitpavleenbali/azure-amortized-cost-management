@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "8627941333108032488"
+      "templateHash": "14324150741041945438"
     }
   },
   "parameters": {
@@ -1233,7 +1233,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "7451338357341176863"
+              "templateHash": "12204719367908731698"
             }
           },
           "parameters": {
@@ -1290,7 +1290,7 @@
                 "criteria": {
                   "allOf": [
                     {
-                      "query": "            FinOpsInventory_CL\r\n            | where actualPct_d >= 60 and actualPct_d < 80\r\n            | where complianceStatus_s != \"critical\"\r\n            | project resourceGroup_s, actualPct_d, forecastPct_d, amortizedMTD_d, technicalBudget_d, complianceStatus_s, TimeGenerated\r\n            | order by actualPct_d desc\r\n          ",
+                      "query": "            FinOpsInventory_CL\r\n            | where actualPct >= 60 and actualPct < 80\r\n            | where complianceStatus != \"critical\"\r\n            | project resourceGroup, actualPct, forecastPct, amortizedMTD, technicalBudget, complianceStatus, TimeGenerated\r\n            | order by actualPct desc\r\n          ",
                       "timeAggregation": "Count",
                       "operator": "GreaterThan",
                       "threshold": 0,
@@ -1328,7 +1328,7 @@
                 "criteria": {
                   "allOf": [
                     {
-                      "query": "            FinOpsInventory_CL\r\n            | where actualPct_d >= 80 and actualPct_d < 95\r\n            | project resourceGroup_s, actualPct_d, forecastPct_d, amortizedMTD_d, technicalBudget_d, complianceStatus_s, TimeGenerated\r\n            | order by actualPct_d desc\r\n          ",
+                      "query": "            FinOpsInventory_CL\r\n            | where actualPct >= 80 and actualPct < 95\r\n            | project resourceGroup, actualPct, forecastPct, amortizedMTD, technicalBudget, complianceStatus, TimeGenerated\r\n            | order by actualPct desc\r\n          ",
                       "timeAggregation": "Count",
                       "operator": "GreaterThan",
                       "threshold": 0,
@@ -1366,7 +1366,7 @@
                 "criteria": {
                   "allOf": [
                     {
-                      "query": "            FinOpsInventory_CL\r\n            | where actualPct_d >= 95\r\n            | project resourceGroup_s, actualPct_d, forecastPct_d, amortizedMTD_d, technicalBudget_d, complianceStatus_s, TimeGenerated\r\n            | order by actualPct_d desc\r\n          ",
+                      "query": "            FinOpsInventory_CL\r\n            | where actualPct >= 95\r\n            | project resourceGroup, actualPct, forecastPct, amortizedMTD, technicalBudget, complianceStatus, TimeGenerated\r\n            | order by actualPct desc\r\n          ",
                       "timeAggregation": "Count",
                       "operator": "GreaterThan",
                       "threshold": 0,

@@ -7,6 +7,8 @@
 **/__pycache__/
 *.pyc
 *.zip
+# Exception: Function App zip needs to be in repo for Deploy-to-Azure post-deploy
+!functions/amortized-budget-engine.zip
 
 # Temp files
 C:\temp\

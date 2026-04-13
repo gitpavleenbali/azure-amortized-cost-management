@@ -87,7 +87,14 @@ jobs:
       - name: Create zip package
         run: |
           cd functions/amortized-budget-engine
-          zip -r ../amortized-budget-engine.zip function_app.py host.json requirements.txt .python_packages/
+          zip -r ../../functions/amortized-budget-engine.zip function_app.py host.json requirements.txt .python_packages/
+
+      - name: Commit zip to repo (for Deploy-to-Azure post-deploy)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add functions/amortized-budget-engine.zip
+          git diff --cached --quiet && echo "No changes" || (git commit -m "ci: update Function App zip package [skip ci]" && git push)
 
       - name: Upload zip as artifact
         uses: actions/upload-artifact@v4

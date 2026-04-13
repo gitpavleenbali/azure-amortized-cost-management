@@ -39,10 +39,10 @@ resource alertHeadUp 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview'
         {
           query: '''
             FinOpsInventory_CL
-            | where actualPct_d >= 60 and actualPct_d < 80
-            | where complianceStatus_s != "critical"
-            | project resourceGroup_s, actualPct_d, forecastPct_d, amortizedMTD_d, technicalBudget_d, complianceStatus_s, TimeGenerated
-            | order by actualPct_d desc
+            | where actualPct >= 60 and actualPct < 80
+            | where complianceStatus != "critical"
+            | project resourceGroup, actualPct, forecastPct, amortizedMTD, technicalBudget, complianceStatus, TimeGenerated
+            | order by actualPct desc
           '''
           timeAggregation: 'Count'
           operator: 'GreaterThan'
@@ -83,9 +83,9 @@ resource alertWarning 'Microsoft.Insights/scheduledQueryRules@2023-03-15-preview
         {
           query: '''
             FinOpsInventory_CL
-            | where actualPct_d >= 80 and actualPct_d < 95
-            | project resourceGroup_s, actualPct_d, forecastPct_d, amortizedMTD_d, technicalBudget_d, complianceStatus_s, TimeGenerated
-            | order by actualPct_d desc
+            | where actualPct >= 80 and actualPct < 95
+            | project resourceGroup, actualPct, forecastPct, amortizedMTD, technicalBudget, complianceStatus, TimeGenerated
+            | order by actualPct desc
           '''
           timeAggregation: 'Count'
           operator: 'GreaterThan'
@@ -126,9 +126,9 @@ resource alertCritical 'Microsoft.Insights/scheduledQueryRules@2023-03-15-previe
         {
           query: '''
             FinOpsInventory_CL
-            | where actualPct_d >= 95
-            | project resourceGroup_s, actualPct_d, forecastPct_d, amortizedMTD_d, technicalBudget_d, complianceStatus_s, TimeGenerated
-            | order by actualPct_d desc
+            | where actualPct >= 95
+            | project resourceGroup, actualPct, forecastPct, amortizedMTD, technicalBudget, complianceStatus, TimeGenerated
+            | order by actualPct desc
           '''
           timeAggregation: 'Count'
           operator: 'GreaterThan'
