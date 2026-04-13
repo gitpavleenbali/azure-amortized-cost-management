@@ -40,6 +40,7 @@ resource customTable 'Microsoft.OperationalInsights/workspaces/tables@2022-10-01
         { name: 'technicalBudget', type: 'real' }
         { name: 'financeBudget', type: 'real' }
         { name: 'amortizedMTD', type: 'real' }
+        { name: 'nativeCostMTD', type: 'real' }
         { name: 'forecastEOM', type: 'real' }
         { name: 'actualPct', type: 'real' }
         { name: 'forecastPct', type: 'real' }
@@ -77,6 +78,7 @@ resource dcr 'Microsoft.Insights/dataCollectionRules@2023-03-11' = {
           { name: 'technicalBudget', type: 'real' }
           { name: 'financeBudget', type: 'real' }
           { name: 'amortizedMTD', type: 'real' }
+          { name: 'nativeCostMTD', type: 'real' }
           { name: 'forecastEOM', type: 'real' }
           { name: 'actualPct', type: 'real' }
           { name: 'forecastPct', type: 'real' }

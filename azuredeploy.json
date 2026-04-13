@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "14324150741041945438"
+      "templateHash": "7291104069048944227"
     }
   },
   "parameters": {
@@ -1453,18 +1453,18 @@
               "type": "bool",
               "defaultValue": false,
               "metadata": {
-                "description": "Show Finance vs Technical Budget Variance section. Disable to hide finance columns when no finance budgets are configured."
+                "description": "Show Finance vs Technical Budget Variance section."
               }
             }
           },
           "variables": {
             "workbookId": "[guid('finops-budget-dashboard', resourceGroup().id)]",
-            "kqlSubscriptionSummary": "FinOpsInventory_CL | where scope == 'subscription' or resourceGroup == '_subscription_rollup' | summarize arg_max(TimeGenerated, *) | project SubscriptionBudget=technicalBudget, AmortizedMTD=amortizedMTD, ForecastEOM=forecastEOM, BudgetUsed=actualPct, ForecastPct=forecastPct, Status=complianceStatus, TotalRGs=totalResourceGroups, LastEvaluated=lastEvaluated",
+            "kqlSubscriptionSummary": "FinOpsInventory_CL | where scope == 'subscription' or resourceGroup == '_subscription_rollup' | summarize arg_max(TimeGenerated, *) | project SubscriptionBudget=technicalBudget, AmortizedMTD=amortizedMTD, NativeCostMTD=nativeCostMTD, ForecastEOM=forecastEOM, BudgetUsed=actualPct, ForecastPct=forecastPct, Status=complianceStatus, TotalRGs=totalResourceGroups, LastEvaluated=lastEvaluated",
             "kqlCompliancePie": "FinOpsInventory_CL | where resourceGroup != '_subscription_rollup' and isnotempty(resourceGroup) | summarize arg_max(TimeGenerated, *) by resourceGroup | summarize Count=count() by complianceStatus | order by Count desc",
-            "kqlInventoryGrid": "FinOpsInventory_CL | where resourceGroup != '_subscription_rollup' and isnotempty(resourceGroup) | summarize arg_max(TimeGenerated, *) by resourceGroup | project ResourceGroup=resourceGroup, Budget=technicalBudget, SpendMTD=amortizedMTD, Forecast=forecastEOM, UsedPct=actualPct, ForecastPct=forecastPct, Status=complianceStatus, Tier=spendTier, Owner=ownerEmail, CostCenter=costCenter, LastEvaluated=lastEvaluated | order by UsedPct desc",
-            "kqlTopSpenders": "FinOpsInventory_CL | where resourceGroup != '_subscription_rollup' and isnotempty(resourceGroup) | summarize arg_max(TimeGenerated, *) by resourceGroup | top 10 by amortizedMTD desc | project ResourceGroup=resourceGroup, SpendMTD=amortizedMTD, Budget=technicalBudget, UsedPct=actualPct, Status=complianceStatus",
+            "kqlInventoryGrid": "FinOpsInventory_CL | where resourceGroup != '_subscription_rollup' and isnotempty(resourceGroup) | summarize arg_max(TimeGenerated, *) by resourceGroup | extend StatusIcon=case(actualPct >= 100, '🔴', actualPct >= 80, '🟡', actualPct >= 60, '🟠', '🟢') | project ResourceGroup=resourceGroup, Budget=technicalBudget, AmortizedMTD=amortizedMTD, NativeCostMTD=nativeCostMTD, CostDelta=round(amortizedMTD - nativeCostMTD, 2), Forecast=forecastEOM, UsedPct=actualPct, ForecastPct=forecastPct, StatusIcon, Status=complianceStatus, Tier=spendTier, Owner=ownerEmail, LastEvaluated=lastEvaluated | order by UsedPct desc",
+            "kqlTopSpenders": "FinOpsInventory_CL | where resourceGroup != '_subscription_rollup' and isnotempty(resourceGroup) | summarize arg_max(TimeGenerated, *) by resourceGroup | top 10 by amortizedMTD desc | project ResourceGroup=resourceGroup, AmortizedMTD=amortizedMTD, NativeCostMTD=nativeCostMTD, Budget=technicalBudget, UsedPct=actualPct, Status=complianceStatus",
             "kqlVarianceReport": "FinOpsInventory_CL | where resourceGroup != '_subscription_rollup' and isnotempty(resourceGroup) | summarize arg_max(TimeGenerated, *) by resourceGroup | where financeBudget > 0 | extend FinanceVariance = amortizedMTD - financeBudget, TechVariance = amortizedMTD - technicalBudget | project ResourceGroup=resourceGroup, FinanceBudget=financeBudget, TechBudget=technicalBudget, SpendMTD=amortizedMTD, FinanceVariance, TechVariance, Status=complianceStatus | order by FinanceVariance desc",
-            "kqlBurnRate": "FinOpsInventory_CL | where resourceGroup != '_subscription_rollup' and isnotempty(resourceGroup) | summarize arg_max(TimeGenerated, *) by resourceGroup | where burnRateDaily > 0 | project ResourceGroup=resourceGroup, DailyBurn=burnRateDaily, MonthlyProjection=burnRateDaily*30, Budget=technicalBudget, DaysToExhaust=iff(burnRateDaily>0, (technicalBudget-amortizedMTD)/burnRateDaily, 999.0) | order by DaysToExhaust asc",
+            "kqlBurnRate": "FinOpsInventory_CL | where resourceGroup != '_subscription_rollup' and isnotempty(resourceGroup) | summarize arg_max(TimeGenerated, *) by resourceGroup | where burnRateDaily > 0 | project ResourceGroup=resourceGroup, DailyBurn=round(burnRateDaily, 2), MonthlyProjection=round(burnRateDaily*30, 2), Budget=technicalBudget, DaysToExhaust=round(iff(burnRateDaily>0, (technicalBudget-amortizedMTD)/burnRateDaily, 999.0), 1) | order by DaysToExhaust asc",
             "varianceSection": "[if(parameters('enableFinanceBudget'), concat(',{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"', variables('kqlVarianceReport'), '\",\"size\":0,\"title\":\"Finance vs Technical Budget Variance\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"', parameters('workspaceResourceId'), '\"],\"visualization\":\"table\"},\"name\":\"variance-report\"}'), '')]"
           },
           "resources": [
@@ -1478,7 +1478,7 @@
                 "displayName": "[parameters('workbookName')]",
                 "category": "FinOps",
                 "sourceId": "[parameters('workspaceResourceId')]",
-                "serializedData": "[concat('{\"version\":\"Notebook/1.0\",\"items\":[{\"type\":1,\"content\":{\"json\":\"# FinOps Budget Compliance Dashboard\\n\\nReal-time amortized cost tracking powered by Log Analytics (FinOpsInventory_CL). Data refreshes after each daily evaluation (06:00 UTC) and on-demand triggers.\"},\"name\":\"title\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"', variables('kqlSubscriptionSummary'), '\",\"size\":4,\"title\":\"Subscription Summary\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"', parameters('workspaceResourceId'), '\"],\"visualization\":\"table\"},\"name\":\"subscription-summary\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"', variables('kqlCompliancePie'), '\",\"size\":2,\"title\":\"Compliance Status Distribution\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"', parameters('workspaceResourceId'), '\"],\"visualization\":\"piechart\"},\"name\":\"compliance-pie\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"', variables('kqlTopSpenders'), '\",\"size\":0,\"title\":\"Top 10 Spenders (by Amortized MTD)\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"', parameters('workspaceResourceId'), '\"],\"visualization\":\"barchart\"},\"name\":\"top-spenders\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"', variables('kqlInventoryGrid'), '\",\"size\":0,\"title\":\"Full Inventory - All Resource Groups\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"', parameters('workspaceResourceId'), '\"],\"visualization\":\"table\",\"gridSettings\":{\"sortBy\":[{\"itemKey\":\"UsedPct\",\"sortOrder\":2}]}},\"name\":\"inventory-grid\"}', variables('varianceSection'), ',{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"', variables('kqlBurnRate'), '\",\"size\":0,\"title\":\"Burn Rate Analysis - Days to Budget Exhaustion\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"', parameters('workspaceResourceId'), '\"],\"visualization\":\"table\",\"gridSettings\":{\"sortBy\":[{\"itemKey\":\"DaysToExhaust\",\"sortOrder\":1}]}},\"name\":\"burn-rate\"}],\"isLocked\":false}')]"
+                "serializedData": "[concat('{\"version\":\"Notebook/1.0\",\"items\":[{\"type\":1,\"content\":{\"json\":\"# FinOps Budget Compliance Dashboard\\n\\nReal-time amortized cost tracking powered by Log Analytics. Data refreshes daily (06:00 UTC) and on-demand.\\n\\n| Icon | Meaning |\\n|------|---------|\\n| 🟢 | Under 60% — on track |\\n| 🟠 | 60-79% — monitor |\\n| 🟡 | 80-99% — action needed |\\n| 🔴 | 100%+ — over budget |\\n\\n> **AmortizedMTD** = RI/SP costs spread daily. **NativeCostMTD** = actual Azure cost blade value. **CostDelta** = difference.\"},\"name\":\"title\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"', variables('kqlSubscriptionSummary'), '\",\"size\":4,\"title\":\"Subscription Summary\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"', parameters('workspaceResourceId'), '\"],\"visualization\":\"table\"},\"name\":\"subscription-summary\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"', variables('kqlCompliancePie'), '\",\"size\":2,\"title\":\"Compliance Status Distribution\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"', parameters('workspaceResourceId'), '\"],\"visualization\":\"piechart\"},\"name\":\"compliance-pie\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"', variables('kqlTopSpenders'), '\",\"size\":0,\"title\":\"Top 10 Spenders (by Amortized MTD)\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"', parameters('workspaceResourceId'), '\"],\"visualization\":\"barchart\"},\"name\":\"top-spenders\"},{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"', variables('kqlInventoryGrid'), '\",\"size\":0,\"title\":\"Full Inventory — All Resource Groups\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"', parameters('workspaceResourceId'), '\"],\"visualization\":\"table\",\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"StatusIcon\",\"formatter\":0},{\"columnMatch\":\"UsedPct\",\"formatter\":8,\"formatOptions\":{\"palette\":\"greenRed\"}},{\"columnMatch\":\"ForecastPct\",\"formatter\":8,\"formatOptions\":{\"palette\":\"greenRed\"}}],\"sortBy\":[{\"itemKey\":\"UsedPct\",\"sortOrder\":2}]}},\"name\":\"inventory-grid\"}', variables('varianceSection'), ',{\"type\":3,\"content\":{\"version\":\"KqlItem/1.0\",\"query\":\"', variables('kqlBurnRate'), '\",\"size\":0,\"title\":\"Burn Rate Analysis — Days to Budget Exhaustion\",\"queryType\":0,\"resourceType\":\"microsoft.operationalinsights/workspaces\",\"crossComponentResources\":[\"', parameters('workspaceResourceId'), '\"],\"visualization\":\"table\",\"gridSettings\":{\"formatters\":[{\"columnMatch\":\"DaysToExhaust\",\"formatter\":8,\"formatOptions\":{\"palette\":\"redGreen\"}}],\"sortBy\":[{\"itemKey\":\"DaysToExhaust\",\"sortOrder\":1}]}},\"name\":\"burn-rate\"}],\"isLocked\":false}')]"
               },
               "tags": {
                 "finops-platform": "budget-alerts-automation",
@@ -2534,7 +2534,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "13877498540283496490"
+              "templateHash": "6771761322086039126"
             }
           },
           "parameters": {
@@ -2606,6 +2606,10 @@
                     },
                     {
                       "name": "amortizedMTD",
+                      "type": "real"
+                    },
+                    {
+                      "name": "nativeCostMTD",
                       "type": "real"
                     },
                     {
@@ -2706,6 +2710,10 @@
                       },
                       {
                         "name": "amortizedMTD",
+                        "type": "real"
+                      },
+                      {
+                        "name": "nativeCostMTD",
                         "type": "real"
                       },
                       {

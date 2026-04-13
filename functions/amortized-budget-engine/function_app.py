@@ -218,8 +218,9 @@ def _run_evaluation() -> dict:
     day = now.day
 
     rg_costs = _read_amortized_costs()
+    native_costs = _read_actual_costs()
     inventory = _read_inventory()
-    logging.info(f"Data: {len(rg_costs)} RGs with cost, {len(inventory)} inventory entries")
+    logging.info(f"Data: {len(rg_costs)} RGs with amortized cost, {len(native_costs)} with native cost, {len(inventory)} inventory entries")
 
     alerts = []
     updated = 0
@@ -265,8 +266,10 @@ def _run_evaluation() -> dict:
         governance_tag_val = tags.get(GOVERNANCE_TAG_KEY, entry.get("governanceTagValue", "")) if GOVERNANCE_TAG_KEY else ""
 
         # Update inventory with latest metrics + contact + tier fields
+        native_mtd = native_costs.get(rg, 0)
         _update_inventory_row(entry["sub"], rg, {
             "amortizedMTD": round(mtd, 2),
+            "nativeCostMTD": round(native_mtd, 2),
             "forecastEOM": round(forecast, 2),
             "burnRateDaily": round(mtd / max(day, 1), 2),
             "actualPct": round(pct, 1),
@@ -350,6 +353,7 @@ def _run_evaluation() -> dict:
 
     if sub_id and run_sub_rollup:
         total_mtd = sum(rg_costs.values())
+        total_native = sum(native_costs.values())
         total_budget = sum(
             (e.get("technical", 0) if e.get("technical", 0) > 0 else e.get("finance", 0))
             for e in inventory.values()
@@ -380,6 +384,7 @@ def _run_evaluation() -> dict:
             "resourceGroup": "_subscription_rollup",
             "technicalBudget": effective_sub_budget,
             "amortizedMTD": round(total_mtd, 2),
+            "nativeCostMTD": round(total_native, 2),
             "forecastEOM": round(sub_forecast, 2),
             "burnRateDaily": round(sub_burn, 2),
             "actualPct": round(sub_pct, 1),
@@ -499,6 +504,59 @@ def _read_costs_from_api() -> dict:
         return costs
     except Exception as ex:
         logging.warning(f"Cost Management API query failed: {ex}")
+        return {}
+
+
+def _read_actual_costs() -> dict:
+    """Query Azure Cost Management API for current month ACTUAL (native) spend per resource group.
+    This is the native cost from Azure's cost blade — NOT amortized."""
+    sub_id = os.environ.get("AZURE_SUBSCRIPTION_ID", os.environ.get("SUBSCRIPTION_ID", ""))
+    if not sub_id:
+        return {}
+
+    try:
+        cred = DefaultAzureCredential()
+        token = cred.get_token("https://management.azure.com/.default").token
+        now = datetime.now(timezone.utc)
+        start_of_month = now.replace(day=1).strftime("%Y-%m-%dT00:00:00Z")
+        end_of_day = now.strftime("%Y-%m-%dT23:59:59Z")
+
+        url = f"https://management.azure.com/subscriptions/{sub_id}/providers/Microsoft.CostManagement/query?api-version=2023-11-01"
+        body = {
+            "type": "ActualCost",
+            "timeframe": "Custom",
+            "timePeriod": {"from": start_of_month, "to": end_of_day},
+            "dataset": {
+                "granularity": "None",
+                "aggregation": {"totalCost": {"name": "Cost", "function": "Sum"}},
+                "grouping": [{"type": "Dimension", "name": "ResourceGroupName"}]
+            }
+        }
+        resp = requests.post(url, json=body, headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }, timeout=60)
+
+        if resp.status_code != 200:
+            logging.warning(f"Actual Cost API returned {resp.status_code}: {resp.text[:200]}")
+            return {}
+
+        result = resp.json()
+        columns = [c["name"] for c in result.get("properties", {}).get("columns", [])]
+        rows = result.get("properties", {}).get("rows", [])
+
+        cost_idx = next((i for i, c in enumerate(columns) if c.lower() in ("cost", "totalcost", "pretaxcost")), 0)
+        rg_idx = next((i for i, c in enumerate(columns) if "resourcegroup" in c.lower()), 1)
+
+        costs = {}
+        for row in rows:
+            rg = str(row[rg_idx]).lower()
+            cost = float(row[cost_idx])
+            if rg:
+                costs[rg] = costs.get(rg, 0) + cost
+        return costs
+    except Exception as ex:
+        logging.warning(f"Actual Cost Management API query failed: {ex}")
         return {}
 
 
@@ -837,6 +895,7 @@ def _sync_inventory_to_law() -> str:
                 "subscriptionId": doc.get("subscriptionId", ""),
                 "technicalBudget": doc.get("technicalBudget", 0),
                 "amortizedMTD": doc.get("amortizedMTD", 0),
+                "nativeCostMTD": doc.get("nativeCostMTD", 0),
                 "forecastEOM": doc.get("forecastEOM", 0),
                 "actualPct": doc.get("actualPct", 0),
                 "forecastPct": doc.get("forecastPct", 0),
