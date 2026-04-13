@@ -111,28 +111,28 @@ Best for: Quick evaluation, dev subscriptions, hands-on learning, MVP validation
 
 **What happens automatically:**
 - All resources deploy (~5 min): Function App, Cosmos DB, Log Analytics, 3 Logic Apps, 3 Alert Rules, Workbook, Storage, Action Group, Budget, Policy
-- Post-deploy script runs inside the deployment:
-  - Downloads Function App zip from GitHub → uploads to blob storage
-  - Sets `WEBSITE_RUN_FROM_PACKAGE` to the blob URL (MI-authenticated)
-  - Creates daily amortized cost export + triggers immediate run
-  - Triggers `/api/backfill` (scans all RGs → Cosmos DB)
-  - Triggers `/api/evaluate` (processes cost data → inventory)
-  - Syncs to Log Analytics → powers Workbook + Alert Rules
+- Function App code loads directly from GitHub (no deployment script needed):
+  - `WEBSITE_RUN_FROM_PACKAGE` points to the committed zip in this repo
+  - Function App downloads and loads all 9 endpoints on first startup
+  - `run_on_startup=True` triggers the first evaluation immediately
+  - Calls Cost Management API for real amortized + native cost data
+  - Backfill Logic App calls `/api/backfill` on its daily schedule (scans all RGs → Cosmos DB)
+  - Data syncs to Log Analytics via DCR → powers Workbook + Alert Rules
 - **Open the Workbook dashboard ~10 minutes after deployment completes**
 
-> **Subscription hint**: Deploy to a dev or sandbox subscription where Azure Policies do not block storage key access. For enterprise subscriptions with strict policies, use Option B below.
+> **Post-Deploy Automation**: Leave at **Disabled** (default). Function App code loads from GitHub automatically. The post-deploy script is only needed if you want to auto-create a cost export — but the Cost Management API fallback provides immediate data without it. Enable only on dev/sandbox subscriptions without storage key restrictions.
 
 #### Common Issues (Option 1 — Deploy to Azure)
 
 | Symptom | Likely Cause | Quick Fix |
 |---------|-------------|----------|
-| Post-deploy script fails with `KeyBasedAuthenticationNotPermitted` | Subscription has an Azure Policy that sets `allowSharedKeyAccess=false` on all storage accounts | Use **Option B** (CI/CD) instead — the post-deploy script needs a storage account for its container, which requires key access. Production environments should use CI/CD. |
+| Post-deploy script fails with `KeyBasedAuthenticationNotPermitted` | Subscription has an Azure Policy blocking storage key access | Leave **Post-Deploy Automation = Disabled** (the default). Function App code loads from GitHub automatically — no deployment script needed. |
 | Function App shows 0 functions after deployment | RBAC roles haven't propagated to the storage account yet | Wait 2-3 minutes, then restart the Function App: `az functionapp restart -g <rg> -n <func>`. If still empty, verify 4 RBAC roles are scoped to the storage account (see [CI/CD Guide - Troubleshooting](docs/cicd-guide.md#troubleshooting)). |
 | Cosmos DB Data Explorer shows `principal does not have required RBAC permissions` | Subscription policy sets `disableLocalAuth=true` on Cosmos DB, blocking key-based portal access | Assign yourself the Cosmos DB SQL Data Contributor role: `az cosmosdb sql role assignment create --account-name <cosmos> --resource-group <rg> --scope "/" --principal-id <your-object-id> --role-definition-id "<cosmos-id>/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002"` |
 | Cosmos DB fails in East US | Regional capacity constraints for serverless accounts | Redeploy in **West US 2**, **West Europe**, or **Central US** — these regions have reliable serverless capacity. |
 | Workbook shows `Failed to resolve column` errors | Data hasn't been synced to Log Analytics yet | Trigger evaluate: call `/api/evaluate` with function key. Data appears in the workbook within 2-5 minutes after the first successful DCR sync. |
-| Cost export creation fails with key auth error | Azure Cost Management Export service requires `allowSharedKeyAccess=true` on storage | On restricted subscriptions, create the export manually in the portal (Cost Management → Exports) or use a storage account without the key policy. |
-| Deployment times out after 30 minutes | Post-deploy script waited too long for Function App to start | The infrastructure is deployed — redeploy to retry the post-deploy script, or manually run the 3-step kickstart: upload zip to blob, trigger `/api/backfill`, trigger `/api/evaluate`. |
+| Cost export creation fails with key auth error | Azure Cost Management Export service requires `allowSharedKeyAccess=true` on storage | Not required — the Cost Management API fallback queries cost data directly. To create exports on restricted subscriptions, do it manually in the portal (Cost Management → Exports). |
+| Deployment times out after 30 minutes | Post-deploy script took too long (if enabled) | Leave Post-Deploy Automation at Disabled (default). Function App code loads from GitHub directly. If you enabled post-deploy and it failed, the infrastructure is still deployed — just restart the Function App. |
 | Deploy button says "template not found" | GitHub CDN cache delay after a recent push | Wait 5 minutes and try again — GitHub's raw content CDN caches for a few minutes. |
 
 > **Not seeing your issue?** Check the full [Troubleshooting table](#troubleshooting--common-deployment-issues) below, or see the [CI/CD Guide](docs/cicd-guide.md#troubleshooting) for advanced debugging.
@@ -328,7 +328,7 @@ azure-amortized-cost-management/
 | `enablePolicy` | `true` | Audit policy for RGs without budgets |
 | `enableRbacAssignment` | `true` | Auto-assign RBAC to managed identities |
 | `enablePrivateNetworking` | `false` | VNet + private endpoints for Cosmos/Storage |
-| `enablePostDeploy` | `true` | Run the post-deploy automation script (code deploy, cost export, backfill). Set to `false` for restricted subscriptions that block storage key access — use CI/CD (Option B) instead. |
+| `enablePostDeploy` | `false` | Optional post-deploy script (creates cost export + wires Event Grid). NOT needed for code deployment — code loads from GitHub automatically. Enable only on dev/sandbox subscriptions without storage key restrictions. |
 | `enableFinanceBudget` | `false` | Show Finance vs Technical Budget Variance section in workbook. Enable only if your finance department provides separate budget allocations per resource group. When disabled, the Variance report is hidden and finance columns are omitted from dashboards — reducing noise. |
 | `budgetStartDate` | `2026-04-01` | Budget period start date (cannot change after creation) |
 
