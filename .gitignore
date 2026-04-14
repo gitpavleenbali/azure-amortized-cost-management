@@ -2,6 +2,9 @@
 **/local.settings.json
 **/*.env
 
+# Internal planning docs (not for public repo)
+.internal/
+
 # Build artifacts
 **/.python_packages/
 **/__pycache__/
