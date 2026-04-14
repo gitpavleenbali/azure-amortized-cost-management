@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "4265052019261772957"
+      "templateHash": "9017879256976210010"
     }
   },
   "parameters": {
@@ -2907,7 +2907,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.37.4.10188",
-              "templateHash": "10522845127517943778"
+              "templateHash": "3477937163747541380"
             }
           },
           "parameters": {
@@ -3160,6 +3160,10 @@
                     {
                       "name": "ENABLE_FINANCE_BUDGET",
                       "value": "[if(parameters('enableFinanceBudget'), 'true', 'false')]"
+                    },
+                    {
+                      "name": "AzureWebJobs.ingest_finance_budget.Disabled",
+                      "value": "true"
                     },
                     {
                       "name": "AzureWebJobsFeatureFlags",

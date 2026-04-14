@@ -97,6 +97,7 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'AZURE_SUBSCRIPTION_ID', value: subscription().subscriptionId }
         { name: 'COST_TRACKING_SCOPE', value: costTrackingScope }
         { name: 'ENABLE_FINANCE_BUDGET', value: enableFinanceBudget ? 'true' : 'false' }
+        { name: 'AzureWebJobs.ingest_finance_budget.Disabled', value: 'true' }
         { name: 'AzureWebJobsFeatureFlags', value: 'EnableWorkerIndexing' }
       ]
     }
