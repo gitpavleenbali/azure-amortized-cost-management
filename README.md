@@ -128,13 +128,12 @@ Best for: Quick evaluation, dev subscriptions, hands-on learning, MVP validation
 
 | Symptom | Likely Cause | Quick Fix |
 |---------|-------------|----------|
-| Function App shows 0 functions after deployment | RBAC roles haven't propagated to the storage account yet | Wait 2-3 minutes, then restart the Function App: `az functionapp restart -g <rg> -n <func>`. If still empty, verify 4 RBAC roles are scoped to the storage account (see [CI/CD Guide - Troubleshooting](docs/cicd-guide.md#troubleshooting)). |
-| Cosmos DB Data Explorer shows `principal does not have required RBAC permissions` | Subscription policy sets `disableLocalAuth=true` on Cosmos DB, blocking key-based portal access | Assign yourself the Cosmos DB SQL Data Contributor role: `az cosmosdb sql role assignment create --account-name <cosmos> --resource-group <rg> --scope "/" --principal-id <your-object-id> --role-definition-id "<cosmos-id>/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002"` |
-| Cosmos DB fails in East US | Regional capacity constraints for serverless accounts | Redeploy in **West US 2**, **West Europe**, or **Central US** — these regions have reliable serverless capacity. |
-| Workbook shows `Failed to resolve column` errors | Data hasn't been synced to Log Analytics yet | Trigger evaluate: call `/api/evaluate` with function key. Data appears in the workbook within 2-5 minutes after the first successful DCR sync. |
-| Cost export creation fails with key auth error | Azure Cost Management Export requires storage key access | Not needed — the Cost Management API provides amortized + native cost data directly. To create exports optionally, do it manually in the portal (Cost Management → Exports). |
-| Deployment times out after 30 minutes | Cosmos DB or region capacity issue | Check Cosmos DB provisioning state. If failed, delete the Cosmos account and redeploy in a different region (West US 2 or West Europe recommended). |
-| Deploy button says "template not found" | GitHub CDN cache delay after a recent push | Wait 5 minutes and try again — GitHub's raw content CDN caches for a few minutes. |
+| Function App shows 0 functions after deployment | RBAC roles haven't propagated to the storage account yet | Wait 2-3 minutes, then restart the Function App: `az functionapp restart -g <rg> -n <func>`. If still empty, verify 4 RBAC roles are scoped to the storage account. |
+| Function App host returns 503 with `AuthorizationFailure` | Blob trigger lease manager uses storage keys internally | Already fixed — blob trigger is disabled by default (`AzureWebJobs.ingest_finance_budget.Disabled=true`). If you re-enabled it on a restricted subscription, disable it again. |
+| Cosmos DB Data Explorer shows `principal does not have required RBAC permissions` | Subscription policy sets `disableLocalAuth=true` on Cosmos DB | Assign yourself the Cosmos DB SQL Data Contributor role: `az cosmosdb sql role assignment create --account-name <cosmos> --resource-group <rg> --scope "/" --principal-id <your-object-id> --role-definition-id "<cosmos-id>/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002"` |
+| Cosmos DB fails in East US | Regional capacity constraints for serverless accounts | Redeploy in **West US 2**, **West Europe**, or **Central US**. |
+| Workbook shows `Failed to resolve column` or `no results` | Data hasn't been synced to Log Analytics yet | Trigger evaluate: call `/api/evaluate` with function key. If backfill hasn't run, call `/api/backfill` first. Data appears within 2-5 minutes after DCR sync. |
+| Deploy button says "template not found" | GitHub CDN cache delay after a recent push | Wait 5 minutes and try again. |
 
 > **Not seeing your issue?** Check the full [Troubleshooting table](#troubleshooting--common-deployment-issues) below, or see the [CI/CD Guide](docs/cicd-guide.md#troubleshooting) for advanced debugging.
 
@@ -354,7 +353,7 @@ Not all features apply at both levels. Here's the breakdown:
 | **Budget Change** (`/api/update-budget`) | **Resource Group** | Updates the technical budget amount for a *single RG* in Cosmos DB. Called by the self-service Logic App after a user requests a change. |
 | **Subscription Budget** (Bicep) | **Subscription** | Created once by Bicep at deploy time. Uses Azure native `Microsoft.Consumption/budgets` with 5 escalating thresholds (50/75/90/100/110%). |
 | **Daily Evaluation** (timer + `/api/evaluate`) | **Both** | Reads amortized cost per RG (from export CSV or Cost Management API), updates each RG row in Cosmos DB, then generates a subscription-level rollup row summing all RG costs. |
-| **Finance Budget Ingestion** (blob trigger) | **Resource Group** | Finance drops a CSV into `finance-budgets/` container → Function auto-ingests per-RG finance budget amounts. No subscription-level finance budget. |
+| **Finance Budget Ingestion** (blob trigger) | **Resource Group** | Finance drops a CSV into `finance-budgets/` container → Function auto-ingests per-RG finance budget amounts. **Disabled by default** on restricted subscriptions (blob trigger lease manager requires storage key access). Enable via app setting: `AzureWebJobs.ingest_finance_budget.Disabled=false`. |
 | **Quarterly Recalculation** (timer) | **Resource Group** | Recalculates technical budgets for each RG based on last month's amortized actuals (only if drift > 30%). |
 | **Azure Workbook** | **Both** | Subscription Summary tile shows rollup. All other tiles (Inventory, Compliance, Top Spenders, Burn Rate) show per-RG data. |
 | **Alert Rules** (Scheduled Query) | **Resource Group** | KQL queries fire on per-RG compliance status changes (headup/warning/critical). |
